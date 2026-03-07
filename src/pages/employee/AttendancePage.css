@@ -1,0 +1,65 @@
+/* .present-day {
+  background-color: #bbf7d0 !important;
+  color: #000 !important;               
+  border-radius: 6px;
+  border : 1px solid #4F46E5;
+}
+
+.partial-present {
+  background-color: #fef08a !important; 
+  color: #000 !important;
+  border-radius: 6px;
+}
+
+.absent-day {
+  background-color: #fecaca !important; 
+  color: #000 !important;
+  border-radius: 6px;
+} */
+
+.present-day {
+  background-color: #bbf7d0 !important; /* green-200 */
+  border-radius: 50%;
+}
+
+.partial-present {
+  background-color: #fef08a !important; /* yellow-200 */
+  border-radius: 50%;
+}
+
+.absent-day {
+  background-color: #fecaca !important; /* red-200 */
+  border-radius: 50%;
+}
+
+/* Style for the selected date */
+.react-calendar__tile--active {
+  background-color: #3b82f6 !important; /* blue-500 */
+  color: white !important;
+}
+
+/* Disable future dates */
+.react-calendar__tile:disabled {
+  background-color: #f9fafb !important; /* gray-50 */
+  color: #d1d5db !important; /* gray-300 */
+}
+
+.calendar-tile-hover {
+  position: relative;
+}
+
+.calendar-tile-hover:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+  margin-bottom: 5px;
+}

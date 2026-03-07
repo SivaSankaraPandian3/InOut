@@ -1,0 +1,500 @@
+/* ProfileCard.css */
+
+/* Main Container */
+.profile-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* background: linear-gradient(135deg,  #3fa56d 0%, #764ba2 100%); */
+  background-color: azure;
+  min-height: 100vh;
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.5rem;
+  color: white;
+  font-weight: 600;
+}
+
+/* Profile Content Layout */
+.profile-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Card Styles */
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f3f4;
+}
+
+.card-header h3 {
+  margin: 0;
+  color: #5bbd89;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+/* Edit Button */
+.edit-btn {
+  /* background: linear-gradient(135deg,  #3fa56d, #764ba2); */
+  background: #3fa56d;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Basic Information Section */
+.basic-info {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.basic-info .left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #42ae56;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.basic-info h2 {
+  margin: 0.5rem 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.basic-info p {
+  margin: 0.25rem 0;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.75rem 0;
+  width: 100%;
+}
+
+.info-item strong {
+  color: #4a5568;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.info-item span {
+  color: #2d3748;
+  font-weight: 500;
+}
+
+/* Info Rows for other sections */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f7fafc;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row strong {
+  color: #4a5568;
+  font-weight: 600;
+  min-width: 140px;
+}
+
+.info-row span {
+  color: #2d3748;
+  text-align: right;
+  flex: 1;
+}
+
+/* Edit Inputs */
+.edit-input {
+  padding: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  width: 100%;
+  transition: border-color 0.3s ease;
+}
+
+.edit-input:focus {
+  outline: none;
+ 
+  box-shadow: 0 0 0 3px rgba(106, 234, 102, 0.1);
+}
+
+.edit-select {
+  padding: 0.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  width: 100%;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.edit-select:focus {
+  outline: none;
+  border-color:  #3fa56d;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Skills Section */
+.skills-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skill-item-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.skill-item {
+  /* background: linear-gradient(135deg,  #3fa56d, #764ba2); */
+  /* background: #3fa56d; */
+  border:1px solid #3fa56d;
+  color: rgb(85, 84, 84);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  flex: 1;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.skill-input {
+  flex: 1;
+}
+
+.remove-skill-btn {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.remove-skill-btn:hover {
+  background: #c53030;
+}
+
+.add-skill-btn {
+  
+  color: rgb(49, 147, 85);
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  transition: background-color 0.3s ease;
+}
+
+.add-skill-btn:hover {
+  background: #38a169;
+}
+
+/* Roles & Responsibilities Section */
+.roles-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.role-item-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.role-item {
+  background: #f7fafc;
+  color: #4a5568;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  border-left: 4px solid  #3fa56d;
+  flex: 1;
+}
+
+.role-input {
+  flex: 1;
+}
+
+.remove-role-btn {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.remove-role-btn:hover {
+  background: #c53030;
+}
+
+.add-role-btn {
+  /* background: #4299e1; */
+  color: rgb(49, 147, 85);
+  border: 1px solid rgb(49, 147, 85);
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  transition: background-color 0.3s ease;
+}
+
+.add-role-btn:hover {
+  background: #3182ce;
+}
+
+/* Save Button */
+.save-btn {
+  /* box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); */
+  /* background: linear-gradient(135deg, #c1dacb, #18201c); */
+  color: rgb(49, 147, 85);
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+}
+
+/* Education, Personal Details, Banking, Company Sections */
+.education-info,
+.personal-details,
+.banking-info,
+.company-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .profile-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .profile-container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .basic-info {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .info-row span {
+    text-align: left;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .card-header h3 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-container {
+    padding: 0.5rem;
+  }
+  
+  .avatar {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .basic-info h2 {
+    font-size: 1.25rem;
+  }
+  
+  .edit-btn,
+  .save-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Animation for smooth transitions */
+.card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar Styling */
+.profile-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.profile-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.profile-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg,  #3fa56d, #764ba2);
+  border-radius: 4px;
+}
+
+.profile-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a6fd8, #6a4190);
+}
+
+/* Focus states for accessibility */
+button:focus,
+input:focus,
+select:focus {
+  outline: 2px solid  #3fa56d;
+  outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+  .profile-container {
+    background: white !important;
+    padding: 0;
+  }
+  
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+  
+  .edit-btn,
+  .save-btn,
+  .add-skill-btn,
+  .add-role-btn,
+  .remove-skill-btn,
+  .remove-role-btn {
+    display: none !important;
+  }
+  
+  .edit-input,
+  .edit-select {
+    border: none !important;
+    background: transparent !important;
+  }
+}
