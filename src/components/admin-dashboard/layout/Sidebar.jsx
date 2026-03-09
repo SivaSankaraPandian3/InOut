@@ -12,7 +12,7 @@ const menuItems = [
     label: 'User Management',
     icon: <FiUsers />,
     subItems: [
-      { label: 'User Cards', path: '/all-users' },
+      { label: 'User profiles', path: '/all-users' },
       { label: 'Employees Schedules', path: '/employees' },
       
       { label: 'Pending Approvals', path: '/pending-users' }

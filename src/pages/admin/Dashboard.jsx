@@ -168,7 +168,7 @@ const Dashboard = () => {
           </div>
           <input
             type="date"
-            className="pl-10 w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="pl-10 w-full border p-2 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
           />

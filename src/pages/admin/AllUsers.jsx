@@ -134,6 +134,7 @@ const AllUsers = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relieved Date</th> */}
               {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joining Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th> */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -147,6 +148,7 @@ const AllUsers = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.position || '-'}</td>
+                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.dateOfRelieving ? formatDate(user.dateOfRelieving) : 'Currently working'}</td> */}
                 {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.dateOfJoining)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.company || '-'}</td> */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

@@ -15,6 +15,7 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
     department: '',
     qualification: '',
     dateOfJoining: '',
+  dateOfRelieving: '',
     profilePic: '',
     skills: [],
     rolesAndResponsibility: [],
