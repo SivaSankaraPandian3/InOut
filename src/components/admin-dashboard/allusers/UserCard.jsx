@@ -20,10 +20,10 @@ import {
 import urbancodeLogoSrc from '../../../assets/uclogo.png';
 import jobzenterLogoSrc from '../../../assets/jzlogo.png';
 
-const UserCard = ({ user, className = '', onEdit }) => {
+const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose }) => {
   const [showBankingDetails, setShowBankingDetails] = useState(false);
   const [showContactDetails, setShowContactDetails] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!!forceExpanded);
 
   const formatBankingDetails = (details) => {
     if (!details) return null;
@@ -97,7 +97,10 @@ const UserCard = ({ user, className = '', onEdit }) => {
   return (
     <div className={`relative w-full  hover:border-blue-200 mx-auto rounded-xl border bg-white p-4 shadow-lg group transition-all duration-300 hover:shadow-xl ${className}`}>
       <button 
-        onClick={() => setIsExpanded(false)}
+        onClick={() => {
+          setIsExpanded(false);
+          if (onClose) onClose();
+        }}
         className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100"
       >
         <X className="w-7 h-7 text-gray-500 bg-gray-200 rounded-full" />
