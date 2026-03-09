@@ -34,6 +34,7 @@ const menuItems = [
           { label: 'Internship Certificate', path: '/internship-letter' },
           { label: 'Internship Offer Letter', path: '/internship-offer' },
           { label: 'Offer Letters', path: '/offer-letters' },
+          { label: 'All Letters', path: '/all-letters' },
           { label: 'Relieving Letters', path: '/relieving-letters' },
           { label: 'Upload Documents', path: '/coming-soon/upload-documents' }
         ]

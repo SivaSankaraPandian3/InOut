@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Container, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, CircularProgress, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
 import letterheadUrl from '../../assets/letterhead.pdf';
@@ -24,6 +24,7 @@ const InternshipOfferLetter = () => {
   const [titleText, setTitleText] = useState('INTERNSHIP OFFER LETTER');
   const [letterDate, setLetterDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [signatureFile, setSignatureFile] = useState(null);
   const [signatureBytes, setSignatureBytes] = useState(null);
@@ -165,9 +166,10 @@ const InternshipOfferLetter = () => {
         } catch (sigErr) { console.error('Signature embed error', sigErr); }
       }
 
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      setPdfUrl(URL.createObjectURL(blob));
+  const pdfBytes = await pdfDoc.save();
+  setPdfBytesData(pdfBytes);
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  setPdfUrl(URL.createObjectURL(blob));
     } catch (err) {
       console.error('PDF generation error', err);
       Swal.fire({ icon: 'error', title: 'Failed', text: 'Failed to generate PDF. See console for details.' });
@@ -231,7 +233,21 @@ const InternshipOfferLetter = () => {
 
   const downloadPdf = () => {
     if (!pdfUrl) return;
-    const a = document.createElement('a'); a.href = pdfUrl; a.download = `${form.studentName || 'internship-offer'}.pdf`; a.click();
+    const uploadAndDownload = async () => {
+      try {
+        if (pdfBytesData) {
+          const { uploadLetterBytes } = await import('../../utils/uploadLetter');
+          await uploadLetterBytes(pdfBytesData, `${form.studentName || 'internship-offer'}.pdf`, selected || undefined);
+          Swal.fire({ icon: 'success', title: 'Saved', text: 'Letter uploaded to cloud', timer: 1300, showConfirmButton: false });
+        }
+      } catch (err) {
+        console.error('Upload failed', err);
+        Swal.fire({ icon: 'warning', title: 'Upload failed', text: 'Letter could not be uploaded to cloud. Download will continue.' });
+      } finally {
+        const a = document.createElement('a'); a.href = pdfUrl; a.download = `${form.studentName || 'internship-offer'}.pdf`; a.click();
+      }
+    };
+    uploadAndDownload();
   };
 
   return (
@@ -280,6 +296,22 @@ const InternshipOfferLetter = () => {
             <Button variant="contained" onClick={generatePdf} disabled={generating}>{generating ? 'Generating...' : 'Generate Preview'}</Button>
             <Button variant="outlined" onClick={downloadPdf} disabled={!pdfUrl}>Download PDF</Button>
           </Box>
+          {selected && (candidates.find(c => c._id === selected)?.letterCopies || []).length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Uploaded copies</Typography>
+              <List dense>
+                {(candidates.find(c => c._id === selected).letterCopies || []).map((lc, i) => (
+                  <ListItem key={i} disableGutters>
+                    <ListItemText primary={lc.filename || lc.url?.split('/').pop() || `Letter ${i+1}`} secondary={lc.uploadedAt ? new Date(lc.uploadedAt).toLocaleString() : ''} />
+                    <ListItemSecondaryAction>
+                      <Button size="small" variant="text" onClick={() => window.open(lc.url, '_blank')}>View</Button>
+                      <Button size="small" variant="text" onClick={() => { const a = document.createElement('a'); a.href = lc.url; a.download = lc.filename || ''; a.click(); }}>Download</Button>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
         </Box>
 
         <Box sx={{ width: 420, minHeight: 553, border: '1px solid #eee' }}>

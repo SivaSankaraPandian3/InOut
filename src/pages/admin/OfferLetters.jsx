@@ -5,6 +5,10 @@ import {
   Box,
   Container,
   Typography,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
   Select,
   MenuItem,
   TextField,
@@ -72,6 +76,7 @@ Warm regards,
 **{{company}}**
 `);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [signatureFile, setSignatureFile] = useState(null);
   const [signatureBytes, setSignatureBytes] = useState(null);
@@ -323,8 +328,8 @@ Warm regards,
           }
 
           // scale to fit
-          const maxSigWidth = 200;
-          const maxSigHeight = 150;
+          const maxSigWidth = 150;
+          const maxSigHeight = 100;
           const origW = embeddedSig.width || 1;
           const origH = embeddedSig.height || 1;
           const scale = Math.min(1, maxSigWidth / origW, maxSigHeight / origH);
@@ -355,10 +360,12 @@ Warm regards,
         }
       }
 
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
+  const pdfBytes = await pdfDoc.save();
+  // keep bytes for upload
+  setPdfBytesData(pdfBytes);
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  setPdfUrl(url);
       } catch (err) {
         console.error('PDF generation error', err);
         Swal.fire({ icon: 'error', title: 'Failed', text: 'Failed to generate PDF. See console for details.' });
@@ -369,10 +376,27 @@ Warm regards,
 
   const downloadPdf = () => {
     if (!pdfUrl) return;
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = `${form.candidateName || 'offer-letter'}.pdf`;
-    a.click();
+    // upload to server/cloudinary (if we have bytes and a selected candidate)
+    const uploadAndDownload = async () => {
+      try {
+        if (pdfBytesData) {
+          // upload using helper
+          const { uploadLetterBytes } = await import('../../utils/uploadLetter');
+          await uploadLetterBytes(pdfBytesData, `${form.candidateName || 'offer-letter'}.pdf`, selected || undefined);
+          Swal.fire({ icon: 'success', title: 'Saved', text: 'Letter uploaded to cloud', timer: 1300, showConfirmButton: false });
+        }
+      } catch (err) {
+        console.error('Upload failed', err);
+        // still allow download even if upload fails
+        Swal.fire({ icon: 'warning', title: 'Upload failed', text: 'Letter could not be uploaded to cloud. Download will continue.' });
+      } finally {
+        const a = document.createElement('a');
+        a.href = pdfUrl;
+        a.download = `${form.candidateName || 'offer-letter'}.pdf`;
+        a.click();
+      }
+    };
+    uploadAndDownload();
   };
 
   return (
@@ -454,6 +478,24 @@ Warm regards,
               <Button variant="contained" onClick={generatePdf} disabled={generating}>{generating ? 'Generating...' : 'Generate Preview'}</Button>
               <Button variant="outlined" onClick={downloadPdf} disabled={!pdfUrl}>Download PDF</Button>
             </Box>
+
+            {/* Uploaded letter copies for selected candidate */}
+            {selected && (candidates.find(c => c._id === selected)?.letterCopies || []).length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>Uploaded copies</Typography>
+                <List dense>
+                  {(candidates.find(c => c._id === selected).letterCopies || []).map((lc, i) => (
+                    <ListItem key={i} disableGutters>
+                      <ListItemText primary={lc.filename || lc.url?.split('/').pop() || `Letter ${i+1}`} secondary={lc.uploadedAt ? new Date(lc.uploadedAt).toLocaleString() : ''} />
+                      <ListItemSecondaryAction>
+                        <Button size="small" variant="text" onClick={() => window.open(lc.url, '_blank')}>View</Button>
+                        <Button size="small" variant="text" onClick={() => { const a = document.createElement('a'); a.href = lc.url; a.download = lc.filename || ''; a.click(); }}>Download</Button>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
           </Box>
 
           <Box sx={{ width: 420, minHeight: 553, border: '1px solid #eee' }}>

@@ -50,7 +50,30 @@ const EmployeeSchedule = () => {
         const res = await axios.get(API_ENDPOINTS.getSchedules, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setEmployees(res.data || []);
+        // Normalize any datetime strings to HH:MM so the time inputs are controlled correctly
+        const normalize = (emp) => {
+          if (!emp) return emp;
+          const ws = emp.weeklySchedule ? { ...emp.weeklySchedule } : {};
+          Object.keys(ws).forEach(day => {
+            const ds = ws[day] ? { ...ws[day] } : {};
+            ['start', 'end'].forEach(k => {
+              const v = ds[k];
+              if (typeof v === 'string' && v.includes('T')) {
+                // try to extract HH:MM from ISO or full datetime
+                const date = new Date(v);
+                if (!isNaN(date.getTime())) {
+                  const hh = String(date.getHours()).padStart(2, '0');
+                  const mm = String(date.getMinutes()).padStart(2, '0');
+                  ds[k] = `${hh}:${mm}`;
+                }
+              }
+            });
+            ws[day] = ds;
+          });
+          return { ...emp, weeklySchedule: ws };
+        };
+
+        setEmployees((res.data || []).map(normalize));
       } catch (error) {
         console.error('Error fetching employees:', error);
       } finally {
@@ -60,27 +83,20 @@ const EmployeeSchedule = () => {
     fetchEmployees();
   }, []);
 
-  const handleChange = (empIndex, day, field, value) => {
-    setEmployees(prevEmployees => {
-      const updated = [...prevEmployees]; // shallow copy of employee array
-      const employee = { ...updated[empIndex] }; // copy of specific employee
-
-      const weeklySchedule = employee.weeklySchedule ? { ...employee.weeklySchedule } : {};
+  // Update schedule for an employee by id (works even when the list is filtered)
+  const handleChange = (empId, day, field, value) => {
+    setEmployees(prevEmployees => prevEmployees.map(emp => {
+      if (emp._id !== empId) return emp;
+      const weeklySchedule = emp.weeklySchedule ? { ...emp.weeklySchedule } : {};
       const daySchedule = weeklySchedule[day] ? { ...weeklySchedule[day] } : {};
-
       daySchedule[field] = value;
       weeklySchedule[day] = daySchedule;
-      employee.weeklySchedule = weeklySchedule;
-      updated[empIndex] = employee;
-
-      return updated;
-    });
+      return { ...emp, weeklySchedule };
+    }));
   };
 
-  const handleSalaryChange = (empIndex, value) => {
-    const updated = [...employees];
-    updated[empIndex].salary = parseFloat(value) || 0;
-    setEmployees(updated);
+  const handleSalaryChange = (empId, value) => {
+    setEmployees(prev => prev.map(emp => emp._id === empId ? { ...emp, salary: parseFloat(value) || 0 } : emp));
   };
 
   const saveChanges = async (employee) => {
@@ -171,7 +187,7 @@ const EmployeeSchedule = () => {
                       label="Basic pay"
                       type="number"
                       value={emp.salary || ''}
-                      onChange={(e) => handleSalaryChange(index, e.target.value)}
+                      onChange={(e) => handleSalaryChange(emp._id, e.target.value)}
                       variant="outlined"
                       size="medium"
                       InputProps={{
@@ -251,8 +267,8 @@ const EmployeeSchedule = () => {
                             <TextField
                               label="Start"
                               type="time"
-                              value={daySchedule.start || '09:00'}
-                              onChange={(e) => handleChange(index, day, 'start', e.target.value)}
+                              value={daySchedule.start || ''}
+                              onChange={(e) => handleChange(emp._id, day, 'start', e.target.value)}
                               variant="outlined"
                               size="small"
                               fullWidth
@@ -265,8 +281,8 @@ const EmployeeSchedule = () => {
                             <TextField
                               label="End"
                               type="time"
-                              value={daySchedule.end || '17:00'}
-                              onChange={(e) => handleChange(index, day, 'end', e.target.value)}
+                              value={daySchedule.end || ''}
+                              onChange={(e) => handleChange(emp._id, day, 'end', e.target.value)}
                               variant="outlined"
                               size="small"
                               fullWidth
@@ -280,7 +296,7 @@ const EmployeeSchedule = () => {
                               control={
                                 <Switch
                                   checked={daySchedule.isLeave || false}
-                                  onChange={(e) => handleChange(index, day, 'isLeave', e.target.checked)}
+                                  onChange={(e) => handleChange(emp._id, day, 'isLeave', e.target.checked)}
                                   color="primary"
                                 />
                               }

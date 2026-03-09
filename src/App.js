@@ -35,6 +35,7 @@ import ExperienceLetter from './pages/admin/ExperienceLetter';
 import RelievingLetter from './pages/admin/RelievingLetter';
 import InternshipLetter from './pages/admin/InternshipLetter';
 import InternshipOfferLetter from './pages/admin/InternshipOfferLetter';
+import AllLetters from './pages/admin/AllLetters';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -90,6 +91,7 @@ function App() {
           <Route path="/relieving-letters" element={<RelievingLetter />} />
           <Route path="/internship-letter" element={<InternshipLetter />} />
           <Route path="/internship-offer" element={<InternshipOfferLetter />} />
+          <Route path="/all-letters" element={<AllLetters />} />
           <Route path="/pending-users" element={<PendingUsers />} />
           <Route path="/all-users" element={<AllUsers />} />
           <Route path="/holidays" element={<Holidays />} />

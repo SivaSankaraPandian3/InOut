@@ -129,6 +129,8 @@ export default function RegisterMultiStep() {
         schedule: formData.schedule
       };
 
+      console.log('Payload:', payload);
+
       await axios.post(API_ENDPOINTS.register, payload);
 
       Swal.fire({ icon: 'success', title: 'Submitted', text: 'Registration submitted and is pending admin approval', confirmButtonColor: '#6ca8a4' });

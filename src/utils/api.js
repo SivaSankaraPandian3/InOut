@@ -34,6 +34,7 @@ export const API_ENDPOINTS = {
   getProfile: `${BASE_URL}/users/profile`,
   updateProfile: `${BASE_URL}/users/profile`,
   uploadProfile: `${BASE_URL}/users/profile/upload`,
+  uploadLetter: `${BASE_URL}/users/letters/upload`,
   // getUserById: (id) => `${BASE_URL}/users/${id}`,
   // getAttendanceByUser: (id) => `${BASE_URL}/attendance/user/${id}`,
 
@@ -56,6 +57,7 @@ export const API_ENDPOINTS = {
   getAdminSummary: `${BASE_URL}/api/admin/summary`,
   getRecentAttendanceLogs: `${BASE_URL}/api/admin/recent-attendance`,
   getRecentDashboardLogs:`${BASE_URL}/api/admin/recent-dashboard`,
+  getAdminLetters: `${BASE_URL}/api/admin/letters`,
 
   // -----------------
   // Pending Users

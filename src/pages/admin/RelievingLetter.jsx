@@ -5,6 +5,10 @@ import {
   Box,
   Container,
   Typography,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
   Select,
   MenuItem,
   TextField,
@@ -38,6 +42,7 @@ Sincerely,
 HR Team
 {{company}}`);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [signatureFile, setSignatureFile] = useState(null);
   const [signatureBytes, setSignatureBytes] = useState(null);
@@ -209,11 +214,31 @@ HR Team
         } catch (sigErr) { console.error('Signature embed error', sigErr); }
       }
 
-      const pdfBytes = await pdfDoc.save(); const blob = new Blob([pdfBytes], { type: 'application/pdf' }); setPdfUrl(URL.createObjectURL(blob));
+  const pdfBytes = await pdfDoc.save();
+  setPdfBytesData(pdfBytes);
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  setPdfUrl(URL.createObjectURL(blob));
   } catch (err) { console.error('PDF generation error', err); Swal.fire({ icon: 'error', title: 'Failed', text: 'Failed to generate PDF. See console for details.' }); } finally { setGenerating(false); }
   };
 
-  const downloadPdf = () => { if (!pdfUrl) return; const a = document.createElement('a'); a.href = pdfUrl; a.download = `${form.candidateName || 'relieving-letter'}.pdf`; a.click(); };
+  const downloadPdf = () => {
+    if (!pdfUrl) return;
+    const uploadAndDownload = async () => {
+      try {
+        if (pdfBytesData) {
+          const { uploadLetterBytes } = await import('../../utils/uploadLetter');
+          await uploadLetterBytes(pdfBytesData, `${form.candidateName || 'relieving-letter'}.pdf`, selected || undefined);
+          Swal.fire({ icon: 'success', title: 'Saved', text: 'Letter uploaded to cloud', timer: 1300, showConfirmButton: false });
+        }
+      } catch (err) {
+        console.error('Upload failed', err);
+        Swal.fire({ icon: 'warning', title: 'Upload failed', text: 'Letter could not be uploaded to cloud. Download will continue.' });
+      } finally {
+        const a = document.createElement('a'); a.href = pdfUrl; a.download = `${form.candidateName || 'relieving-letter'}.pdf`; a.click();
+      }
+    };
+    uploadAndDownload();
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -245,6 +270,23 @@ HR Team
               <Button variant="contained" onClick={generatePdf} disabled={generating}>{generating ? 'Generating...' : 'Generate Preview'}</Button>
               <Button variant="outlined" onClick={downloadPdf} disabled={!pdfUrl}>Download PDF</Button>
             </Box>
+
+            {selected && (candidates.find(c => c._id === selected)?.letterCopies || []).length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>Uploaded copies</Typography>
+                <List dense>
+                  {(candidates.find(c => c._id === selected).letterCopies || []).map((lc, i) => (
+                    <ListItem key={i} disableGutters>
+                      <ListItemText primary={lc.filename || lc.url?.split('/').pop() || `Letter ${i+1}`} secondary={lc.uploadedAt ? new Date(lc.uploadedAt).toLocaleString() : ''} />
+                      <ListItemSecondaryAction>
+                        <Button size="small" variant="text" onClick={() => window.open(lc.url, '_blank')}>View</Button>
+                        <Button size="small" variant="text" onClick={() => { const a = document.createElement('a'); a.href = lc.url; a.download = lc.filename || ''; a.click(); }}>Download</Button>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
           </Box>
           <Box sx={{ width: 420, minHeight: 553, border: '1px solid #eee' }}>
             {pdfUrl ? (<iframe title="Preview" src={pdfUrl} width="100%" height="553px" />) : (<Box sx={{ p: 2 }}><Typography variant="body2" color="text.secondary">Preview will appear here after generating.</Typography></Box>)}
