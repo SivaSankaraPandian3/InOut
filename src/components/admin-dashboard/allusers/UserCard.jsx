@@ -295,6 +295,14 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
             </div>
           )}
 
+          {/* Admin Comments (internal) */}
+          {user.adminComments && user.adminComments.trim() !== '' && (
+            <div className="border rounded-xl p-5 bg-yellow-50">
+              <h4 className="text-lg font-semibold text-gray-800 mb-2">Admin Comments</h4>
+              <div className="text-gray-700 whitespace-pre-wrap">{user.adminComments}</div>
+            </div>
+          )}
+
           {/* Footer with timestamps */}
           <div className="flex flex-col sm:flex-row justify-between text-sm text-gray-500 pt-4 border-t">
             <div>

@@ -133,16 +133,16 @@ const AllUsers = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
               {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relieved Date</th> */}
               {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joining Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th> */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredUsers.map((user, idx) => (
-              <tr key={user._id} className={user.isActive ? '' : 'opacity-60'}>
+              <tr key={user._id} className={user.isActive ? '' : 'opacity-60'} onClick={() => setViewUserId(user._id)}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.employeeId || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
@@ -151,7 +151,7 @@ const AllUsers = () => {
                 {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.dateOfRelieving ? formatDate(user.dateOfRelieving) : 'Currently working'}</td> */}
                 {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.dateOfJoining)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.company || '-'}</td> */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex gap-2">
                     <button
                       onClick={() => setViewUserId(user._id)}
@@ -166,6 +166,9 @@ const AllUsers = () => {
                       Edit
                     </button>
                   </div>
+                </td> */}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <img src={user.profilePic || '/default-avatar.png'} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
                 </td>
               </tr>
             ))}

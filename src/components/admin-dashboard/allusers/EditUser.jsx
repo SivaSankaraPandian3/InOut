@@ -18,8 +18,9 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
   dateOfRelieving: '',
     profilePic: '',
     skills: [],
-    rolesAndResponsibility: [],
-    isActive: true,
+  rolesAndResponsibility: [],
+  isActive: true,
+  adminComments: '',
     employeeId: '',
     bankDetails: {
       bankingName: '',
@@ -188,6 +189,18 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
               <label htmlFor="isActive" className="text-sm font-medium">Active User</label>
             </div>
 
+          </div>
+
+          {/* Admin comments - full width editable by admin */}
+          <div className="col-span-1 md:col-span-2">
+            <label className="text-sm text-gray-600">Admin Comments</label>
+            <textarea
+              name="adminComments"
+              value={form.adminComments || ''}
+              onChange={handleChange}
+              placeholder="Internal notes / comments"
+              className="w-full border rounded px-3 py-2 h-24 resize-none"
+            />
           </div>
 
           {/* Banking - full width */}

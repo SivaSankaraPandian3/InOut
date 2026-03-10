@@ -285,7 +285,7 @@ export default function ProfileCard() {
                     />
                     {uploading && <div className="small">Uploading...</div>}
                     {isEditingAll && profile.profilePic && (
-                      <button className="remove-pic-btn" onClick={removeProfilePic} type="button">Remove Profile Picture</button>
+                      <button className="remove-pic-btn" onClick={removeProfilePic} type="button">Remove</button>
                     )}
                   </div>
                 )}
