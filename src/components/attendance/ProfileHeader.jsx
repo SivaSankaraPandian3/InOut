@@ -46,14 +46,23 @@ function ProfileHeader() {
     }
   };
 
+  const getAvatarUrl = (user) => {
+    if (!user) return getCompanyLogo(user && user.company);
+    const p = user.profilePic;
+    // support string URL or cloudinary-style object { url | secure_url }
+    if (typeof p === 'string' && p.trim()) return p;
+    if (p && typeof p === 'object') return p.secure_url || p.url || p.secureUrl || '';
+    return getCompanyLogo(user.company);
+  };
+
   return (
     <div className="bg-gradient-to-r from-white via-gray-50 to-white border border-gray-200 shadow rounded-xl px-5 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-full border border-gray-300 shadow-sm bg-white p-1">
           <img
-            src={getCompanyLogo(user.company)}
-            alt={user.company}
-            className="w-full h-full object-contain rounded-full"
+            src={getAvatarUrl(user)}
+            alt={user.name || user.company}
+            className="w-full h-full object-cover rounded-full"
           />
         </div>
         <div>

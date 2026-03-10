@@ -32,6 +32,8 @@ export default function ProfileCard() {
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isEditingAll, setIsEditingAll] = useState(false);
+  const [originalProfile, setOriginalProfile] = useState(null);
   const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
   const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
   const [previewSrc, setPreviewSrc] = useState(null);
@@ -71,7 +73,8 @@ export default function ProfileCard() {
           }
         };
 
-        setProfile(normalized);
+  setProfile(normalized);
+  setOriginalProfile(normalized);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -147,7 +150,8 @@ export default function ProfileCard() {
       await axios.put(API_ENDPOINTS.updateProfile, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setEditing(null);
+  setIsEditingAll(false);
+  setOriginalProfile(payload);
       // Small success feedback
       try {
         Swal.fire({ icon: 'success', title: 'Profile updated', text: 'Your profile was updated successfully', timer: 1500, showConfirmButton: false });
@@ -158,12 +162,41 @@ export default function ProfileCard() {
     }
   };
 
+  const cancelAllEdits = () => {
+    if (originalProfile) setProfile(originalProfile);
+    setPreviewSrc(null);
+    setIsEditingAll(false);
+  };
+
+  const removeProfilePic = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      await axios.put(API_ENDPOINTS.updateProfile, { profilePic: '' }, { headers: { Authorization: `Bearer ${token}` } });
+      setProfile(prev => ({ ...prev, profilePic: '' }));
+      setPreviewSrc(null);
+      try { Swal.fire({ icon: 'success', title: 'Removed', text: 'Profile picture removed', timer: 1200, showConfirmButton: false }); } catch (e) {}
+    } catch (err) {
+      console.error('Failed to remove profile pic', err);
+      try { Swal.fire({ icon: 'error', title: 'Remove failed', text: 'Could not remove profile picture' }); } catch (e) {}
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading profile...</div>;
   }
 
   return (
     <div className="profile-container">
+      <div className="profile-toolbar">
+        {!isEditingAll ? (
+          <button className="edit-btn main-edit" onClick={() => setIsEditingAll(true)}>Edit Profile</button>
+        ) : (
+          <div className="toolbar-actions">
+            <button className="save-btn main-save" onClick={saveChanges}>Save All Changes</button>
+            <button className="edit-btn main-cancel" onClick={cancelAllEdits}>Cancel</button>
+          </div>
+        )}
+      </div>
       <div className="profile-content">
         {/* Left Column */}
         <div className="column">
@@ -171,12 +204,6 @@ export default function ProfileCard() {
           <div className="card">
             <div className="card-header">
               <h3>Basic Information</h3>
-              <button 
-                className="edit-btn" 
-                onClick={() => toggleEdit('basicInfo')}
-              >
-                {editing === 'basicInfo' ? 'Cancel' : 'Edit'}
-              </button>
             </div>
             <div className="basic-info">
               <div className="left">
@@ -185,7 +212,7 @@ export default function ProfileCard() {
                   alt="Profile"
                   className="avatar"
                 />
-                {editing === 'basicInfo' ? (
+                {(editing === 'basicInfo' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.name}
@@ -195,7 +222,7 @@ export default function ProfileCard() {
                 ) : (
                   <h2>{profile.name}</h2>
                 )}
-                {editing === 'basicInfo' && (
+                {(editing === 'basicInfo' || isEditingAll) && (
                   <div className="info-item upload-block">
                     <label className="upload-label">Change Profile Picture</label>
                     <input
@@ -257,12 +284,15 @@ export default function ProfileCard() {
                       }}
                     />
                     {uploading && <div className="small">Uploading...</div>}
+                    {isEditingAll && profile.profilePic && (
+                      <button className="remove-pic-btn" onClick={removeProfilePic} type="button">Remove Profile Picture</button>
+                    )}
                   </div>
                 )}
                 
                 <div className="info-item">
                    Email: 
-                  {editing === 'basicInfo' ? (
+                  {(editing === 'basicInfo' || isEditingAll) ? (
                     <input
                       type="email"
                       value={profile.email}
@@ -275,7 +305,7 @@ export default function ProfileCard() {
                 </div>
                 <div className="info-item">
                    Phone: 
-                  {editing === 'basicInfo' ? (
+                  {(editing === 'basicInfo' || isEditingAll) ? (
                     <input
                       type="tel"
                       value={profile.phone}
@@ -288,7 +318,7 @@ export default function ProfileCard() {
                 </div>
                 <div className="info-item">
                    Address: 
-                  {editing === 'basicInfo' ? (
+                  {(editing === 'basicInfo' || isEditingAll) ? (
                     <input
                       type="text"
                       value={profile.address}
@@ -301,7 +331,7 @@ export default function ProfileCard() {
                 </div>
                 <div className="info-item">
                    Blood Group: 
-                  {editing === 'basicInfo' ? (
+                  {(editing === 'basicInfo' || isEditingAll) ? (
                     <input
                       type="text"
                       value={profile.bloodGroup}
@@ -314,28 +344,18 @@ export default function ProfileCard() {
                 </div>
               </div>
             </div>
-            {editing === 'basicInfo' && (
-              <button className="save-btn" onClick={saveChanges}>
-                Save Changes
-              </button>
-            )}
+            {/* global save used instead of per-card save */}
           </div>
 
           {/* Education Card */}
           <div className="card">
             <div className="card-header">
               <h3>Education & Qualification</h3>
-              <button 
-                className="edit-btn" 
-                onClick={() => toggleEdit('education')}
-              >
-                {editing === 'education' ? 'Cancel' : 'Edit'}
-              </button>
             </div>
             <div className="education-info">
               <div className="info-row">
                  Qualification: 
-                {editing === 'education' ? (
+                {(editing === 'education' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.qualification}
@@ -347,28 +367,17 @@ export default function ProfileCard() {
                 )}
               </div>
             </div>
-            {editing === 'education' && (
-              <button className="save-btn" onClick={saveChanges}>
-                Save Changes
-              </button>
-            )}
           </div>
 
           {/* Skills Card */}
           <div className="card">
             <div className="card-header">
               <h3>Skills</h3>
-              <button 
-                className="edit-btn" 
-                onClick={() => toggleEdit('skills')}
-              >
-                {editing === 'skills' ? 'Cancel' : 'Edit'}
-              </button>
             </div>
             <div className="skills-info">
               {profile.skills.map((skill, index) => (
                 <div key={index} className="skill-item-container">
-                  {editing === 'skills' ? (
+                  {(editing === 'skills' || isEditingAll) ? (
                     <>
                       <input
                         type="text"
@@ -388,34 +397,23 @@ export default function ProfileCard() {
                   )}
                 </div>
               ))}
-              {editing === 'skills' && (
+              {(editing === 'skills' || isEditingAll) && (
                 <button className="add-skill-btn" onClick={() => addArrayItem('skills')}>
                   + Add Skill
                 </button>
               )}
             </div>
-            {editing === 'skills' && (
-              <button className="save-btn" onClick={saveChanges}>
-                Save Changes
-              </button>
-            )}
           </div>
 
           {/* Roles & Responsibilities Card */}
           <div className="card">
             <div className="card-header">
               <h3>Roles & Responsibilities</h3>
-              <button 
-                className="edit-btn" 
-                onClick={() => toggleEdit('rolesAndResponsibility')}
-              >
-                {editing === 'rolesAndResponsibility' ? 'Cancel' : 'Edit'}
-              </button>
             </div>
             <div className="roles-info">
               {profile.rolesAndResponsibility.map((role, index) => (
                 <div key={index} className="role-item-container">
-                  {editing === 'rolesAndResponsibility' ? (
+                  {(editing === 'rolesAndResponsibility' || isEditingAll) ? (
                     <>
                       <input
                         type="text"
@@ -435,17 +433,12 @@ export default function ProfileCard() {
                   )}
                 </div>
               ))}
-              {editing === 'rolesAndResponsibility' && (
+              {(editing === 'rolesAndResponsibility' || isEditingAll) && (
                 <button className="add-role-btn" onClick={() => addArrayItem('rolesAndResponsibility')}>
                   + Add Responsibility
                 </button>
               )}
             </div>
-            {editing === 'rolesAndResponsibility' && (
-              <button className="save-btn" onClick={saveChanges}>
-                Save Changes
-              </button>
-            )}
           </div>
         </div>
 
@@ -513,17 +506,11 @@ export default function ProfileCard() {
           <div className="card">
             <div className="card-header">
               <h3>Banking Details</h3>
-              <button 
-                className="edit-btn" 
-                onClick={() => toggleEdit('bankDetails')}
-              >
-                {editing === 'bankDetails' ? 'Cancel' : 'Edit'}
-              </button>
             </div>
             <div className="banking-info">
               <div className="info-row">
                  Bank Name: 
-                {editing === 'bankDetails' ? (
+                {(editing === 'bankDetails' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.bankDetails.bankingName}
@@ -536,7 +523,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  Account Number: 
-                {editing === 'bankDetails' ? (
+                {(editing === 'bankDetails' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.bankDetails.bankAccountNumber}
@@ -549,7 +536,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  IFSC Code: 
-                {editing === 'bankDetails' ? (
+                {(editing === 'bankDetails' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.bankDetails.ifscCode}
@@ -562,7 +549,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  UPI ID: 
-                {editing === 'bankDetails' ? (
+                {(editing === 'bankDetails' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.bankDetails.upiId}
@@ -574,28 +561,17 @@ export default function ProfileCard() {
                 )}
               </div>
             </div>
-            {editing === 'bankDetails' && (
-              <button className="save-btn" onClick={saveChanges}>
-                Save Changes
-              </button>
-            )}
           </div>
 
           {/* Company & Position Card */}
           <div className="card">
             <div className="card-header">
               <h3>Company & Position</h3>
-              <button 
-                className="edit-btn" 
-                onClick={() => toggleEdit('company')}
-              >
-                {editing === 'company' ? 'Cancel' : 'Edit'}
-              </button>
             </div>
             <div className="company-info">
               <div className="info-row">
                  Position: 
-                {editing === 'company' ? (
+                {(editing === 'company' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.position}
@@ -608,7 +584,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  Company: 
-                {editing === 'company' ? (
+                {(editing === 'company' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.company}
@@ -621,7 +597,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  Department: 
-                {editing === 'company' ? (
+                {(editing === 'company' || isEditingAll) ? (
                   <input
                     type="text"
                     value={profile.department}
@@ -634,7 +610,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  Salary: 
-                {editing === 'company' ? (
+                {(editing === 'company' || isEditingAll) ? (
                   <input
                     type="number"
                     value={profile.salary}
@@ -647,7 +623,7 @@ export default function ProfileCard() {
               </div>
               <div className="info-row">
                  Date of Joining: 
-                {editing === 'company' ? (
+                {(editing === 'company' || isEditingAll) ? (
                   <input
                     type="date"
                     value={profile.dateOfJoining ? new Date(profile.dateOfJoining).toISOString().split('T')[0] : ''}
@@ -659,11 +635,6 @@ export default function ProfileCard() {
                 )}
               </div>
             </div>
-            {editing === 'company' && (
-              <button className="save-btn" onClick={saveChanges}>
-                Save Changes
-              </button>
-            )}
           </div>
         </div>
       </div>
