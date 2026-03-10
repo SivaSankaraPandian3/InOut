@@ -12,6 +12,7 @@ import {
   Box,
   Typography,
   Paper,
+  Tooltip,
   Grid,
   Card,
   CardContent,
@@ -49,6 +50,8 @@ import {
   Warning as LateIcon,
   AlarmOn as EarlyIcon
 } from "@mui/icons-material";
+
+import CommentIcon from '@mui/icons-material/Comment';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -782,14 +785,38 @@ const Report = () => {
                                         <Stack direction="row" alignItems="center" spacing={1} justifyContent="center">
                                           {late && <LateIcon color="warning" fontSize="small" />}
 
-                                          <Typography sx={{ fontSize: "0.9rem" }}>{checkInTime}</Typography>
+                                            {/* Show check-in time and tooltip if comment exists */}
+                                            {checkIn?.comment ? (
+                                              <>
+                                                <Tooltip title={checkIn.comment} arrow>
+                                                  <Typography sx={{ fontSize: "0.9rem" }}>{checkInTime}</Typography>
+                                                </Tooltip>
+                                                <Tooltip title={checkIn.comment} arrow>
+                                                  <CommentIcon fontSize="small" sx={{ color: 'action.active', ml: 0.5 }} />
+                                                </Tooltip>
+                                              </>
+                                            ) : (
+                                              <Typography sx={{ fontSize: "0.9rem" }}>{checkInTime}</Typography>
+                                            )}
                                         </Stack>
                                       </TableCell>
                                       <TableCell align="center">
                                         <Stack direction="row" alignItems="center" spacing={1} justifyContent="center">
                                           {early && <EarlyIcon color="warning" fontSize="small" />}
 
-                                          <Typography sx={{ fontSize: "0.9rem" }}>{checkOutTime}</Typography>
+                                            {/* Show check-out time and tooltip if comment exists */}
+                                            {checkOut?.comment ? (
+                                              <>
+                                                <Tooltip title={checkOut.comment} arrow>
+                                                  <Typography sx={{ fontSize: "0.9rem" }}>{checkOutTime}</Typography>
+                                                </Tooltip>
+                                                <Tooltip title={checkOut.comment} arrow>
+                                                  <CommentIcon fontSize="small" sx={{ color: 'action.active', ml: 0.5 }} />
+                                                </Tooltip>
+                                              </>
+                                            ) : (
+                                              <Typography sx={{ fontSize: "0.9rem" }}>{checkOutTime}</Typography>
+                                            )}
                                         </Stack>
                                       </TableCell>
                                       <TableCell align="center">

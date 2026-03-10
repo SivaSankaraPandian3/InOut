@@ -32,6 +32,7 @@ function AttendancePage() {
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [calendarViewDate, setCalendarViewDate] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [comment, setComment] = useState('');
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -178,7 +179,8 @@ function AttendancePage() {
     formData.append("type", type);
     formData.append("location", location);
     formData.append("image", compressedBlob);
-
+  // include optional comment with attendance
+  formData.append('comment', comment);
     try {
       setIsSubmitting(true); // start loading
       await axios.post(API_ENDPOINTS.postAttendance, formData, {
@@ -196,6 +198,7 @@ function AttendancePage() {
       setImage(null);
       setCompressedBlob(null);
       setLocation("");
+  setComment('');
       stopCamera();
       fetchAttendance();
     } catch (err) {
@@ -554,11 +557,22 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
               </>
             ) : (
               <>
-                <img
+                    <img
                   src={image}
                   alt="Captured"
                   className="rounded-lg w-full object-cover"
                 />
+                {/* Optional comment input shown after capture */}
+                <div className="mt-3 text-left">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Comment (optional)</label>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={3}
+                    placeholder="Add a note about this attendance (e.g., reason for early leave, remote work, etc.)"
+                    className="w-full border rounded p-2 text-sm"
+                  />
+                </div>
                 {capturedTime && (
                   <div className="text-sm text-gray-600 mt-2 space-y-1">
                     <p>
@@ -580,6 +594,7 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                       URL.revokeObjectURL(image);
                       setImage(null);
                       setCompressedBlob(null);
+                      setComment('');
                       startCamera();
                     }}
                     className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
@@ -590,7 +605,6 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                     onClick={submitAttendance}
                     className={`bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""
                       }`}
-                    disabled={isSubmitting}
                   >
                     {isSubmitting
                       ? "Submitting..."

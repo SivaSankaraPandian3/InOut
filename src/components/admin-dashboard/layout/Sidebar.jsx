@@ -23,7 +23,7 @@ const menuItems = [
     icon: <FiCalendar />,
     subItems: [
       { label: 'Leave Records', path: '/leave-requests' },
-      { label: 'Late Reports', path: '/coming-soon/late-reports' }
+      { label: 'Late comments', path: '/comments' }
     ]
   },
       {

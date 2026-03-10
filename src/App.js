@@ -14,6 +14,7 @@ import Employees from './pages/admin/Employees';
 // import Salary from './pages/admin/Salary';
 import Attendance from './pages/admin/Attendance';
 import Reports from './pages/admin/Reports';
+import CommentsPage from './pages/admin/Comments';
 import LeaveRequestsAdmin from './pages/admin/LeaveRequests';
 
 
@@ -86,6 +87,7 @@ function App() {
           <Route path="/salaryhistory" element={<PayslipList />} />
           <Route path="/attendances" element={<Attendance />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/comments" element={<CommentsPage />} />
           <Route path="/offer-letters" element={<OfferLetters />} />
           <Route path="/experience-letters" element={<ExperienceLetter />} />
           <Route path="/relieving-letters" element={<RelievingLetter />} />
