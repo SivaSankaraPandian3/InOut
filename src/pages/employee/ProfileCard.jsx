@@ -18,7 +18,8 @@ export default function ProfileCard() {
     profilePic: "",
     department: "",
     qualification: "",
-    dateOfJoining: "",
+  dateOfJoining: "",
+  dateOfBirth: "",
     rolesAndResponsibility: [],
     skills: [],
     bankDetails: {
@@ -63,6 +64,8 @@ export default function ProfileCard() {
           department: data.department || "",
           qualification: data.qualification || "",
           dateOfJoining: data.dateOfJoining || "",
+            dateOfBirth: data.dateOfBirth || "",
+          dateOfBirth: data.dateOfBirth || "",
           rolesAndResponsibility: Array.isArray(data.rolesAndResponsibility) ? data.rolesAndResponsibility : [],
           skills: Array.isArray(data.skills) ? data.skills : [],
           bankDetails: {
@@ -303,6 +306,19 @@ export default function ProfileCard() {
                     <span>{profile.email}</span>
                   )}
                 </div>
+                 <div className="info-item">
+                 Date of Birth: 
+                {(editing === 'company' || isEditingAll) ? (
+                  <input
+                    type="date"
+                    value={profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : ''}
+                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                    className="edit-input"
+                  />
+                ) : (
+                  <span>{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not set'}</span>
+                )}
+              </div>
                 <div className="info-item">
                    Phone: 
                   {(editing === 'basicInfo' || isEditingAll) ? (
@@ -329,6 +345,7 @@ export default function ProfileCard() {
                     <span>{profile.address}</span>
                   )}
                 </div>
+                
                 <div className="info-item">
                    Blood Group: 
                   {(editing === 'basicInfo' || isEditingAll) ? (
@@ -366,6 +383,7 @@ export default function ProfileCard() {
                   <span>{profile.qualification}</span>
                 )}
               </div>
+             
             </div>
           </div>
 

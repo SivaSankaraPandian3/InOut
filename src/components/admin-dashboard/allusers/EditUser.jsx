@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '../../../utils/api';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 
-const EditUser = ({ userId, onClose, onUpdated }) => {
+const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -15,12 +17,12 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
     department: '',
     qualification: '',
     dateOfJoining: '',
-  dateOfRelieving: '',
+    dateOfRelieving: '',
     profilePic: '',
     skills: [],
-  rolesAndResponsibility: [],
-  isActive: true,
-  adminComments: '',
+    rolesAndResponsibility: [],
+    isActive: true,
+    adminComments: '',
     employeeId: '',
     bankDetails: {
       bankingName: '',
@@ -30,38 +32,33 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
     }
   });
   const [showPasswordFields, setShowPasswordFields] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    newPassword: '',
-    confirmPassword: ''
-  });
+  const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' });
+  const navigate = useNavigate();
+
+  const isPage = pageMode || !onClose;
 
   useEffect(() => {
-    if (userId) {
-      axios.get(API_ENDPOINTS.getUserById(userId), {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+    if (!userId) return;
+    axios.get(API_ENDPOINTS.getUserById(userId), {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(({ data }) => {
+        setForm({
+          ...data,
+          skills: data.skills || [],
+          rolesAndResponsibility: data.rolesAndResponsibility || [],
+          bankDetails: data.bankDetails || {},
+          isActive: data.isActive ?? false
+        });
       })
-        .then(({ data }) => {
-          setForm({
-            ...data,
-            skills: data.skills || [],
-            rolesAndResponsibility: data.rolesAndResponsibility || [],
-            bankDetails: data.bankDetails || {},
-            isActive: data.isActive ?? false
-          });
-        })
-        .catch(() => Swal.fire('Error', 'Failed to fetch user', 'error'));
-    }
+      .catch(() => Swal.fire('Error', 'Failed to fetch user', 'error'));
   }, [userId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
+
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData(prev => ({ ...prev, [name]: value }));
@@ -72,12 +69,10 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
       Swal.fire('Error', 'Passwords do not match', 'error');
       return;
     }
-
     if (passwordData.newPassword.length < 6) {
       Swal.fire('Error', 'Password must be at least 6 characters long', 'error');
       return;
     }
-
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
@@ -100,7 +95,8 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
       await axios.put(API_ENDPOINTS.updateUser(userId), formDataWithoutPassword, { headers });
       Swal.fire('Success', 'User updated successfully', 'success');
       onUpdated?.();
-      onClose?.();
+      if (isPage) navigate(-1);
+      else onClose?.();
     } catch (err) {
       console.error(err);
       Swal.fire('Error', 'Update failed', 'error');
@@ -115,11 +111,18 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, bankDetails: { ...prev.bankDetails, [name]: value } }));
   };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-start justify-center p-6 overflow-auto">
-      <div className="bg-white max-w-4xl w-full rounded-lg shadow-lg overflow-y-auto max-h-[92vh]">
+    <div className={isPage ? 'p-6 bg-gray-50 min-h-screen' : 'fixed inset-0 z-50 bg-black bg-opacity-40 flex items-start justify-center p-6 overflow-auto'}>
+      <div className={`bg-white max-w-4xl w-full rounded-lg shadow-lg overflow-y-auto ${isPage ? 'mx-auto mt-6' : 'max-h-[92vh]'}`}>
+        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b">
           <div className="flex items-center gap-4">
+            {isPage && (
+              <button onClick={() => navigate(-1)} className="p-2 rounded hover:bg-gray-100 mr-2">
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-bold text-gray-700">
               {form.name?.charAt(0) || 'U'}
             </div>
@@ -131,7 +134,9 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
           <div className="flex items-center gap-3">
             <div className="text-sm text-gray-500">Employee ID</div>
             <div className="font-mono text-sm text-gray-800">{form.employeeId || '—'}</div>
-            <button onClick={onClose} className="text-gray-500 hover:text-black text-2xl">&times;</button>
+            {!isPage && (
+              <button onClick={onClose} className="text-gray-500 hover:text-black text-2xl">&times;</button>
+            )}
           </div>
         </div>
 
@@ -178,12 +183,12 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
             <input type="text" name="rolesAndResponsibility" value={form.rolesAndResponsibility.join(', ')} onChange={(e) => handleArrayField('rolesAndResponsibility', e.target.value)} placeholder="Comma separated" className="w-full border rounded px-3 py-2" />
 
             <div className="flex items-center gap-3">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 id="isActive"
-                name="isActive" 
-                checked={form.isActive} 
-                onChange={handleChange} 
+                name="isActive"
+                checked={form.isActive}
+                onChange={handleChange}
                 className="w-4 h-4"
               />
               <label htmlFor="isActive" className="text-sm font-medium">Active User</label>
@@ -262,7 +267,7 @@ const EditUser = ({ userId, onClose, onUpdated }) => {
           </div>
 
           <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>
+            {!isPage && <button type="button" onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>}
             <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white">Save Changes</button>
           </div>
         </form>

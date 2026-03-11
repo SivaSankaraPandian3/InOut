@@ -26,6 +26,7 @@ export default function RegisterMultiStep() {
     profilePic: '',
     bloodGroup: '',
     address: '',
+  dateOfBirth: '',
 
     // bank details
     bankDetails: {
@@ -122,6 +123,7 @@ export default function RegisterMultiStep() {
         department: formData.department,
         qualification: formData.qualification,
         dateOfJoining: formData.dateOfJoining || undefined,
+        dateOfBirth: formData.dateOfBirth || undefined,
         rolesAndResponsibility: formData.rolesAndResponsibility ? formData.rolesAndResponsibility.split(',').map(s => s.trim()).filter(Boolean) : [],
         skills: formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
         profilePic: formData.profilePic,
@@ -236,6 +238,10 @@ function PersonalDetails({ formData, handleChange, showPassword, setShowPassword
         name="address"
         value={formData.address}
         onChange={handleChange} />
+      <div>
+        <label className="block text-sm font-medium text-[#2c2e3e] mb-1">Date of Birth</label>
+        <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="block w-full rounded-md border border-gray-300 px-3 py-2" />
+      </div>
 
     </div>
   );

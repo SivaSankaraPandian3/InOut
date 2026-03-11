@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
-import EditUser from '../../components/admin-dashboard/allusers/EditUser';
-import UserCard from '../../components/admin-dashboard/allusers/UserCard';
+// UserCard is used on the dedicated user detail page now
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/admin-dashboard/common/Loader';
 
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingUserId, setEditingUserId] = useState(null);
-  const [viewUserId, setViewUserId] = useState(null);
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
   const [filterPosition, setFilterPosition] = useState('All');
@@ -142,7 +141,7 @@ const AllUsers = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredUsers.map((user, idx) => (
-              <tr key={user._id} className={user.isActive ? '' : 'opacity-60'} onClick={() => setViewUserId(user._id)}>
+              <tr key={user._id} className={user.isActive ? '' : 'opacity-60'} onClick={() => navigate(`/all-users/${user._id}`)}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.employeeId || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
@@ -176,32 +175,7 @@ const AllUsers = () => {
           </table>
         </div>
       </div>
-
-      {/* View modal: show UserCard expanded */}
-      {viewUserId && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center p-4">
-          <div className="max-w-5xl w-full">
-            <UserCard
-              user={sortedUsers.find(u => u._id === viewUserId)}
-              forceExpanded
-              onEdit={(id) => {
-                setEditingUserId(id);
-                setViewUserId(null);
-              }}
-              onClose={() => setViewUserId(null)}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Edit modal */}
-      {editingUserId && (
-        <EditUser
-          userId={editingUserId}
-          onClose={() => setEditingUserId(null)}
-          onUpdated={fetchUsers}
-        />
-      )}
+      {/* NOTE: Viewing and editing now navigate to dedicated pages */}
     </div>
   );
 };

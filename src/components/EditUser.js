@@ -10,8 +10,10 @@ function EditUser() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: ''
+    password: '',
+    dateOfBirth: ''
   });
+  
   const [weeklySchedule, setWeeklySchedule] = useState({
     Monday: { start: '09:00', end: '17:00', isLeave: false },
     Tuesday: { start: '09:00', end: '17:00', isLeave: false },
@@ -65,7 +67,8 @@ function EditUser() {
           setFormData({
             name: userData.name,
             email: userData.email,
-            password: '' // Don't pre-fill password for security
+            password: '', // Don't pre-fill password for security
+            dateOfBirth: userData.dateOfBirth ? userData.dateOfBirth.split('T')[0] : ''
           });
           
           if (scheduleData) {
@@ -123,7 +126,8 @@ function EditUser() {
         name: formData.name,
         email: formData.email,
         ...(formData.password && { password: formData.password }),
-        schedule: weeklySchedule
+        schedule: weeklySchedule,
+        dateOfBirth: formData.dateOfBirth || undefined
       };
 
       await axios.put(`http://localhost:5000/users/${selectedUserId}`, updateData);
@@ -281,6 +285,20 @@ function EditUser() {
                           placeholder="••••••••"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-1">
+                        Date of Birth
+                      </label>
+                      <input
+                        type="date"
+                        id="dateOfBirth"
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth}
+                        onChange={handleChange}
+                        className="block w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
                     </div>
                   </div>
 

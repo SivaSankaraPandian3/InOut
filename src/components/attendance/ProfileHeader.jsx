@@ -68,7 +68,11 @@ function ProfileHeader() {
         <div>
           <h2 className="text-lg font-semibold text-gray-800">{user.name}</h2>
           <p className="text-sm text-gray-500">{user.position || 'Employee'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{user.company}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-gray-400 mt-0.5">{user.company}</p>
+            <p className="text-xs text-gray-400 mt-0.5">•</p>
+            <p className="text-xs text-gray-500 mt-0.5">ID: <span className="font-medium text-gray-700">{user.employeeId || '-'}</span></p>
+          </div>
         </div>
       </div>
 

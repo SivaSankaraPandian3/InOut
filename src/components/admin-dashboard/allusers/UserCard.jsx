@@ -234,6 +234,10 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
                     {user.address|| 'N/A'}
                   </span>
                 </div>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                  <span className="font-mono">DOB: {user.dateOfBirth ? formatDate(user.dateOfBirth) : 'N/A'}</span>
+                </div>
               </div>
             </div>
           </div>

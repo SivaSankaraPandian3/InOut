@@ -23,6 +23,8 @@ import Leave from './pages/employee/ApplyLeaveForm';
 import EditUser from './components/EditUser';
 import PendingUsers from './pages/admin/PendingUsers';
 import AllUsers from './pages/admin/AllUsers';
+import UserDetail from './pages/admin/UserDetail';
+import EditUserPage from './pages/admin/EditUserPage';
 import Holidays from './pages/admin/Holidays';
 import TaskManagerPage from './pages/employee/TaskManagerPage';
 import PayslipGenerator from './pages/admin/PayslipGenerator';
@@ -96,6 +98,8 @@ function App() {
           <Route path="/all-letters" element={<AllLetters />} />
           <Route path="/pending-users" element={<PendingUsers />} />
           <Route path="/all-users" element={<AllUsers />} />
+          <Route path="/all-users/:userId" element={<UserDetail />} />
+          <Route path="/all-users/:userId/edit" element={<EditUserPage />} />
           <Route path="/holidays" element={<Holidays />} />
           <Route path="/payslip" element={<PayslipGenerator />} />
           <Route path="/leave-requests" element={<LeaveRequestsAdmin />} />

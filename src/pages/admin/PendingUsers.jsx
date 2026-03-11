@@ -96,6 +96,7 @@ const PendingUsers = () => {
                 <p className="text-sm text-gray-600">Email: {user.email}</p>
                 <p className="text-sm text-gray-600">Phone: {user.phone}</p>
                 <p className="text-sm text-gray-600">Company: {user.company}</p>
+                <p className="text-sm text-gray-600">DOB: {user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
                 <p className="text-sm text-gray-600">Position: {user.position}</p>
               </div>
               <div className="flex gap-2">
