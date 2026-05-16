@@ -141,7 +141,15 @@ Warm regards,
       .replace(/{{\s*designation\s*}}/gi, data.designation || '')
       .replace(/{{\s*company\s*}}/gi, data.company || '')
       .replace(/{{\s*salary\s*}}/gi, data.salary || '')
-      .replace(/{{\s*joiningDate\s*}}/gi, data.joiningDate || '')
+      .replace(/{{\s*joiningDate\s*}}/gi, data.joiningDate
+        ? (() => {
+            try {
+              return new Date(data.joiningDate).toISOString().slice(0, 10);
+            } catch {
+              return data.joiningDate;
+            }
+          })()
+        : '')
       .replace(/{{\s*probationPeriod\s*}}/gi, data.probationPeriod || '')
       .replace(/{{\s*workingHours\s*}}/gi, data.workingHours || '')
       .replace(/{{\s*workLocation\s*}}/gi, data.workLocation || '')
@@ -154,73 +162,37 @@ Warm regards,
   const generatePdf = async () => {
     setGenerating(true);
     try {
-      // fetch letterhead PDF as array buffer
       const resp = await fetch(letterheadUrl);
       const arrayBuffer = await resp.arrayBuffer();
+      const srcPdf = await PDFDocument.load(arrayBuffer);
+      const pdfDoc = await PDFDocument.create();
+      const [copiedFirst] = await pdfDoc.copyPages(srcPdf, [0]);
+      pdfDoc.addPage(copiedFirst);
+      const page = pdfDoc.getPage(0);
+      const { width, height } = page.getSize();
 
-    // Load the source (letterhead) PDF and create a fresh PDF to write into.
-    const srcPdf = await PDFDocument.load(arrayBuffer);
-    const pdfDoc = await PDFDocument.create();
+      const margins = { top: 132, bottom: 68, left: 40, right: 50 };
+      const contentTop = height - margins.top;
+      const contentWidth = width - margins.left - margins.right;
+      const sigReserve = signatureBytes ? 52 : 0;
+      const headerBlockHeight = 42;
+      const maxBodyHeight = contentTop - margins.bottom - headerBlockHeight - sigReserve;
 
-    // Copy the first page (letterhead) into our new document as the first page
-    const [copiedFirst] = await pdfDoc.copyPages(srcPdf, [0]);
-    pdfDoc.addPage(copiedFirst);
-    let page = pdfDoc.getPage(0);
-    const { width, height } = page.getSize();
-
-  // Margins in points (Top, Bottom, Left, Right)
-  // Updated left margin to 40 as requested
-  const margins = { top: 150, bottom: 150, left: 40, right: 50 };
-
-      // Prepare text
       const finalBody = replacePlaceholders(body, form);
-      const lines = finalBody.split('\n');
+      const sourceLines = finalBody.split('\n');
 
-      // Embed both regular and bold fonts (use Times Roman now for a classic letter look)
       const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-      let fontBold = null;
+      let fontBold = fontRegular;
       try {
         fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
       } catch (e) {
-        // If TimesRomanBold isn't available, fall back to regular for bold
         fontBold = fontRegular;
       }
-  // Title/bold color (#2b2b2b) and body color (#858585)
-  const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
-  const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255); 
-      // Draw editable date and title inside the content area (within margins)
-      const contentTop = height - margins.top;
-      const contentWidth = width - margins.left - margins.right;
 
-      // format date from yyyy-mm-dd input (letterDate) or fallback to today
-      let dateStr = '';
-      try {
-        dateStr = letterDate ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      } catch (e) {
-        dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      }
+      const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
+      const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);
+      const letterSpacing = 0.15;
 
-      // Draw date right-aligned within content area
-      const fontDateSize = 10;
-      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
-      const dateX = margins.left + (contentWidth - dateWidth);
-      const dateY = contentTop - fontDateSize; // baseline inside content area
-  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
-      const title = titleText || '';
-      const titleSize = 16;
-      const titleWidth = fontBold.widthOfTextAtSize(title, titleSize);
-      const titleX = margins.left + (contentWidth - titleWidth) / 2;
-      const titleY = contentTop - titleSize - 6; // slightly below the date
-      page.drawText(title, { x: titleX, y: titleY, size: titleSize, font: fontBold, color: titleColor });
-
-      // Start drawing body text below the title/date area
-      const fontSize = 12;
-      const lineHeight = fontSize + 2;
-
-    let cursorY = titleY - 14; // gap between title and body
-  const maxWidth = contentWidth;
-
-      // helper: tokenize line into segments with bold flag using **bold** markup
       const tokenizeLineForBold = (line) => {
         const parts = [];
         const pattern = /\*\*(.+?)\*\*/g;
@@ -235,123 +207,144 @@ Warm regards,
         }
         if (lastIndex < line.length) parts.push({ text: line.slice(lastIndex), bold: false });
         return parts;
-  };
+      };
 
-  // letter spacing in points (adds small tracking between characters)
-  const letterSpacing = 0.2;
-  // width of a single space in the chosen font (used for wrapping)
-  const spaceWidth = fontRegular.widthOfTextAtSize(' ', fontSize) + letterSpacing;
+      const buildLayout = (fontSize) => {
+        const lineHeight = fontSize + 1.5;
+        const paragraphGap = 3;
+        const spaceWidth = fontRegular.widthOfTextAtSize(' ', fontSize) + letterSpacing;
 
-  const measureWord = (text, font) => {
-    if (!text) return 0;
-    return font.widthOfTextAtSize(text, fontSize) + letterSpacing * Math.max(0, text.length - 1);
-  };
-
-  for (const rawLine of lines) {
-        // Break line into bold/non-bold segments, then into words preserving the bold flag
-        const segments = tokenizeLineForBold(rawLine);
-        const words = [];
-        segments.forEach(seg => {
-          const segWords = seg.text.split(/\s+/).filter(Boolean);
-          segWords.forEach((w, i) => words.push({ text: w, bold: !!seg.bold }));
-        });
-
-        // wrap words into visual lines
-        let lineWords = [];
-        let lineWidth = 0;
-
-        const flushLine = async () => {
-          if (lineWords.length === 0) return;
-          // ensure enough space on page
-          if (cursorY - lineHeight < margins.bottom) {
-            const [bg] = await pdfDoc.copyPages(srcPdf, [0]);
-            pdfDoc.addPage(bg);
-            page = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-            cursorY = height - margins.top - fontSize;
-          }
-
-          // draw accumulated words
-          let x = margins.left;
-          for (let i = 0; i < lineWords.length; i++) {
-            const wobj = lineWords[i];
-            const usedFont = wobj.bold ? fontBold : fontRegular;
-            // draw word character-by-character to apply letterSpacing
-            let cx = x;
-            for (let ci = 0; ci < wobj.text.length; ci++) {
-              const ch = wobj.text[ci];
-              const charColor = wobj.bold ? titleColor : bodyColor;
-              page.drawText(ch, { x: cx, y: cursorY, size: fontSize, font: usedFont, color: charColor });
-              const cw = usedFont.widthOfTextAtSize(ch, fontSize);
-              cx += cw + letterSpacing;
-            }
-            const w = measureWord(wobj.text, usedFont);
-            x += w;
-            if (i !== lineWords.length - 1) x += spaceWidth;
-          }
-          cursorY -= lineHeight;
-          lineWords = [];
-          lineWidth = 0;
+        const measureWord = (text, font) => {
+          if (!text) return 0;
+          return font.widthOfTextAtSize(text, fontSize) + letterSpacing * Math.max(0, text.length - 1);
         };
 
-        for (let i = 0; i < words.length; i++) {
-          const wobj = words[i];
-          const usedFont = wobj.bold ? fontBold : fontRegular;
-          const wordWidth = measureWord(wobj.text, usedFont);
-          const extra = lineWords.length > 0 ? spaceWidth : 0;
-          if (lineWidth + extra + wordWidth > maxWidth) {
-            // flush current line
-            await flushLine();
+        const visualLines = [];
+
+        for (const rawLine of sourceLines) {
+          const segments = tokenizeLineForBold(rawLine);
+          const words = [];
+          segments.forEach(seg => {
+            seg.text.split(/\s+/).filter(Boolean).forEach(w => {
+              words.push({ text: w, bold: !!seg.bold });
+            });
+          });
+
+          if (words.length === 0) {
+            visualLines.push({ words: [], isParagraphBreak: true });
+            continue;
           }
-          // add word
-          lineWords.push(wobj);
-          lineWidth = lineWidth + (lineWords.length > 1 ? spaceWidth : 0) + wordWidth;
+
+          let lineWords = [];
+          let lineWidth = 0;
+
+          const pushLine = () => {
+            if (lineWords.length === 0) return;
+            visualLines.push({ words: lineWords, isParagraphBreak: false });
+            lineWords = [];
+            lineWidth = 0;
+          };
+
+          for (const wobj of words) {
+            const usedFont = wobj.bold ? fontBold : fontRegular;
+            const wordWidth = measureWord(wobj.text, usedFont);
+            const extra = lineWords.length > 0 ? spaceWidth : 0;
+            if (lineWidth + extra + wordWidth > contentWidth) pushLine();
+            lineWords.push(wobj);
+            lineWidth = lineWidth + (lineWords.length > 1 ? spaceWidth : 0) + wordWidth;
+          }
+          pushLine();
+          visualLines.push({ words: [], isParagraphBreak: true });
         }
 
-        // flush remaining words
-        await flushLine();
+        let totalHeight = 0;
+        visualLines.forEach((vl, idx) => {
+          if (vl.isParagraphBreak) {
+            if (idx > 0 && idx < visualLines.length - 1) totalHeight += paragraphGap;
+            return;
+          }
+          totalHeight += lineHeight;
+        });
 
-        // paragraph spacing
-        cursorY -= lineHeight / 2;
+        return { visualLines, totalHeight, lineHeight, paragraphGap, fontSize, spaceWidth, measureWord };
+      };
+
+      let layout = buildLayout(11);
+      for (let size = 11; size >= 9 && layout.totalHeight > maxBodyHeight; size -= 0.5) {
+        layout = buildLayout(size);
       }
 
-      // If signature provided, embed it near the end of content (below last rendered line)
+      const { visualLines, lineHeight, paragraphGap, fontSize, spaceWidth, measureWord } = layout;
+
+      let dateStr = '';
+      try {
+        dateStr = letterDate
+          ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+          : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+
+      const fontDateSize = 9.5;
+      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
+      const dateX = margins.left + (contentWidth - dateWidth);
+      const dateY = contentTop - fontDateSize;
+      page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
+
+      const title = titleText || '';
+      const titleSize = 14;
+      const titleWidth = fontBold.widthOfTextAtSize(title, titleSize);
+      const titleX = margins.left + (contentWidth - titleWidth) / 2;
+      const titleY = contentTop - titleSize - 8;
+      page.drawText(title, { x: titleX, y: titleY, size: titleSize, font: fontBold, color: titleColor });
+
+      let cursorY = titleY - 10;
+
+      for (const vl of visualLines) {
+        if (vl.isParagraphBreak) {
+          cursorY -= paragraphGap;
+          continue;
+        }
+        if (vl.words.length === 0) continue;
+
+        let x = margins.left;
+        for (let i = 0; i < vl.words.length; i++) {
+          const wobj = vl.words[i];
+          const usedFont = wobj.bold ? fontBold : fontRegular;
+          let cx = x;
+          for (let ci = 0; ci < wobj.text.length; ci++) {
+            const ch = wobj.text[ci];
+            page.drawText(ch, {
+              x: cx,
+              y: cursorY,
+              size: fontSize,
+              font: usedFont,
+              color: wobj.bold ? titleColor : bodyColor
+            });
+            cx += usedFont.widthOfTextAtSize(ch, fontSize) + letterSpacing;
+          }
+          x += measureWord(wobj.text, usedFont);
+          if (i !== vl.words.length - 1) x += spaceWidth;
+        }
+        cursorY -= lineHeight;
+      }
+
       if (signatureBytes && signatureFile) {
         try {
           const sigUint8 = new Uint8Array(signatureBytes);
-          let embeddedSig = null;
-          const mime = signatureFile.type || '';
+          const embeddedSig = (signatureFile.type || '').includes('png')
+            ? await pdfDoc.embedPng(sigUint8)
+            : await pdfDoc.embedJpg(sigUint8);
 
-          if (mime.includes('png')) {
-            embeddedSig = await pdfDoc.embedPng(sigUint8);
-          } else {
-            embeddedSig = await pdfDoc.embedJpg(sigUint8);
-          }
-
-          // scale to fit
-          const maxSigWidth = 150;
-          const maxSigHeight = 100;
-          const origW = embeddedSig.width || 1;
-          const origH = embeddedSig.height || 1;
-          const scale = Math.min(1, maxSigWidth / origW, maxSigHeight / origH);
+          const maxSigWidth = 120;
+          const maxSigHeight = 48;
+          const scale = Math.min(1, maxSigWidth / (embeddedSig.width || 1), maxSigHeight / (embeddedSig.height || 1));
           const sigDims = embeddedSig.scale(scale);
+          const sigY = Math.max(margins.bottom + 8, cursorY - sigDims.height - 6);
 
-          // place the signature below the last drawn content (cursorY)
-          let targetPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-          let targetY = cursorY - lineHeight * 1.2;
-
-          // if there's not enough space on the current page, add a new page
-          if (targetY < margins.bottom) {
-            const [bg] = await pdfDoc.copyPages(srcPdf, [0]);
-            pdfDoc.addPage(bg);
-            targetPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-            const { height: newPageH } = targetPage.getSize();
-            targetY = newPageH - margins.top - lineHeight * 2;
-          }
-
-          const x = margins.left;
-          targetPage.drawImage(embeddedSig, {
-            x,
-            y: targetY,
+          page.drawImage(embeddedSig, {
+            x: margins.left,
+            y: sigY,
             width: sigDims.width,
             height: sigDims.height
           });
@@ -360,7 +353,7 @@ Warm regards,
         }
       }
 
-  const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await pdfDoc.save();
   // keep bytes for upload
   setPdfBytesData(pdfBytes);
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });

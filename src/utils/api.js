@@ -1,12 +1,11 @@
 
 
 // src/utils/api.js
-export const BASE_URL = 'https://uc-attendance-system-1ts2.onrender.com';
-
-// src/utils/api.js
-
-// Base URL
-// export const BASE_URL = 'http://localhost:5000'; // Change to your live domain when needed'https://uc-attendance-system-1ts2.onrender.com'
+// In development, use relative URLs so CRA proxies to Render (avoids CORS).
+// In production, call the API directly.
+const PRODUCTION_API = 'https://uc-attendance-system-1ts2.onrender.com';
+export const BASE_URL =
+  process.env.NODE_ENV === 'production' ? PRODUCTION_API : '';
 
 // -----------------
 // Auth & User APIs

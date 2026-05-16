@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '../../utils/api';
 // UserCard is used on the dedicated user detail page now
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/admin-dashboard/common/Loader';
+import { getPrimaryWork, getUserWorks } from '../../utils/userWorks';
 
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState('enable');
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
@@ -33,6 +38,102 @@ const AllUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const getAuthHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  });
+
+  const updateUserStatus = async (userId, isActive) => {
+    await axios.put(
+      API_ENDPOINTS.updateUser(userId),
+      { isActive },
+      { headers: getAuthHeaders() }
+    );
+  };
+
+  const handleToggleStatus = async (e, user) => {
+    e.stopPropagation();
+    const nextActive = !user.isActive;
+    const actionLabel = nextActive ? 'enable' : 'disable';
+
+    const result = await Swal.fire({
+      title: `${nextActive ? 'Enable' : 'Disable'} user?`,
+      text: `${user.name} (${user.employeeId || 'no ID'}) will be ${actionLabel}d.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: nextActive ? '#16a34a' : '#dc2626',
+      confirmButtonText: nextActive ? 'Enable' : 'Disable',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setUpdating(true);
+      await updateUserStatus(user._id, nextActive);
+      setUsers((prev) =>
+        prev.map((u) => (u._id === user._id ? { ...u, isActive: nextActive } : u))
+      );
+      setSelectedIds((prev) => prev.filter((id) => id !== user._id));
+      Swal.fire('Success', `User ${actionLabel}d successfully.`, 'success');
+    } catch (error) {
+      console.error('Failed to update user status:', error);
+      Swal.fire('Error', `Could not ${actionLabel} user.`, 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedIds.length === 0) {
+      Swal.fire('Info', 'Select at least one user.', 'info');
+      return;
+    }
+
+    const isActive = bulkAction === 'enable';
+    const actionLabel = isActive ? 'enable' : 'disable';
+
+    const result = await Swal.fire({
+      title: `Bulk ${isActive ? 'Enable' : 'Disable'}?`,
+      text: `${selectedIds.length} user(s) will be ${actionLabel}d.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: isActive ? '#16a34a' : '#dc2626',
+      confirmButtonText: `Yes, ${isActive ? 'Enable' : 'Disable'}`,
+    });
+
+    if (!result.isConfirmed) return;
+
+    const count = selectedIds.length;
+
+    try {
+      setUpdating(true);
+      await Promise.all(selectedIds.map((id) => updateUserStatus(id, isActive)));
+      setUsers((prev) =>
+        prev.map((u) => (selectedIds.includes(u._id) ? { ...u, isActive } : u))
+      );
+      setSelectedIds([]);
+      Swal.fire('Success', `${count} user(s) ${actionLabel}d.`, 'success');
+    } catch (error) {
+      console.error('Bulk update failed:', error);
+      Swal.fire('Error', `Bulk ${actionLabel} failed. Try again.`, 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const toggleSelectAll = (e) => {
+    e.stopPropagation();
+    const visibleIds = filteredUsers.map((u) => u._id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds(allSelected ? [] : visibleIds);
+  };
+
+  const toggleSelectOne = (e, userId) => {
+    e.stopPropagation();
+    setSelectedIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
 
   if (loading) return <Loader />;
 
@@ -81,6 +182,9 @@ const AllUsers = () => {
   };
 
   const filteredUsers = sortedUsers.filter(u => matchesSearch(u) && matchesFilters(u));
+  const visibleIds = filteredUsers.map((u) => u._id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
 
   return (
     <div className="p-6 w-full flex flex-col">
@@ -119,7 +223,27 @@ const AllUsers = () => {
             <option value="Inactive">Inactive</option>
           </select>
 
-          <button onClick={() => { setSearchTerm(''); setFilterDept('All'); setFilterPosition('All'); setFilterCompany('All'); setFilterStatus('All'); }} className="px-3 py-1 border rounded text-sm">Reset</button>
+          <button onClick={() => { setSearchTerm(''); setFilterDept('All'); setFilterPosition('All'); setFilterCompany('All'); setFilterStatus('All'); setSelectedIds([]); }} className="px-3 py-1 border rounded text-sm">Reset</button>
+
+          <div className="flex items-center gap-2 border-l pl-2 ml-1">
+            <select
+              value={bulkAction}
+              onChange={(e) => setBulkAction(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={updating}
+            >
+              <option value="enable">Enable</option>
+              <option value="disable">Disable</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleBulkUpdate}
+              disabled={updating || selectedIds.length === 0}
+              className="px-3 py-1 rounded text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {updating ? 'Updating...' : `Bulk Update (${selectedIds.length})`}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -128,46 +252,82 @@ const AllUsers = () => {
           <table className="min-w-full w-full table-auto divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAll}
+                  disabled={updating || filteredUsers.length === 0}
+                  className="w-4 h-4 rounded border-gray-300"
+                  aria-label="Select all visible users"
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
-              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Relieved Date</th> */}
-              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joining Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th> */}
-              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredUsers.map((user, idx) => (
-              <tr key={user._id} className={user.isActive ? '' : 'opacity-60'} onClick={() => navigate(`/all-users/${user._id}`)}>
+              <tr
+                key={user._id}
+                className={`${user.isActive ? '' : 'opacity-60'} hover:bg-gray-50 cursor-pointer`}
+                onClick={() => navigate(`/all-users/${user._id}`)}
+              >
+                <td className="px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(user._id)}
+                    onChange={(e) => toggleSelectOne(e, user._id)}
+                    disabled={updating}
+                    className="w-4 h-4 rounded border-gray-300"
+                    aria-label={`Select ${user.name}`}
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.employeeId || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.position || '-'}</td>
-                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.dateOfRelieving ? formatDate(user.dateOfRelieving) : 'Currently working'}</td> */}
-                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.dateOfJoining)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.company || '-'}</td> */}
-                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setViewUserId(user._id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => setEditingUserId(user._id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-600 text-xs leading-4 font-medium rounded-md text-gray-600 bg-white hover:bg-gray-50"
-                    >
-                      Edit
-                    </button>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <div className="flex items-center gap-3">
+                    <img src={user.profilePic || '/default-avatar.png'} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                    <span>{user.name}</span>
                   </div>
-                </td> */}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <img src={user.profilePic || '/default-avatar.png'} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                  {getPrimaryWork(user).department || user.department || '-'}
+                  {getUserWorks(user).length > 1 && (
+                    <span className="ml-1 text-xs text-indigo-600">+{getUserWorks(user).length - 1}</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {getPrimaryWork(user).position || user.position || '-'}
+                  {getUserWorks(user).length > 1 && (
+                    <span className="ml-1 text-xs text-indigo-600" title={getUserWorks(user).slice(1).map(w => `${w.position} @ ${w.company}`).join(', ')}>
+                      +{getUserWorks(user).length - 1}
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {user.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => handleToggleStatus(e, user)}
+                    disabled={updating}
+                    className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white disabled:opacity-50 ${
+                      user.isActive
+                        ? 'bg-red-600 hover:bg-red-700'
+                        : 'bg-green-600 hover:bg-green-700'
+                    }`}
+                  >
+                    {user.isActive ? 'Disable' : 'Enable'}
+                  </button>
                 </td>
               </tr>
             ))}

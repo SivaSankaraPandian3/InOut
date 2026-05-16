@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import urbancodeLogoSrc from '../../../assets/uclogo.png';
 import jobzenterLogoSrc from '../../../assets/jzlogo.png';
+import { getUserWorks } from '../../../utils/userWorks';
 
 const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose }) => {
   const [showBankingDetails, setShowBankingDetails] = useState(false);
@@ -51,6 +52,7 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
   };
 
   const formattedBankingDetails = formatBankingDetails(user.bankDetails);
+  const works = getUserWorks(user);
 
   if (!isExpanded) {
     return (
@@ -139,7 +141,13 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
             </div>
 
             <div className="text-lg text-gray-700 font-medium">
-              {user.position} at {user.company}
+              {works[0]?.position || user.position}
+              {(works[0]?.company || user.company) && ` at ${works[0]?.company || user.company}`}
+              {works.length > 1 && (
+                <span className="block text-sm font-normal text-indigo-600 mt-1">
+                  +{works.length - 1} more work assignment{works.length > 2 ? 's' : ''}
+                </span>
+              )}
             </div>
 
             {user.skills.length>0 && (<div className="text-sm border px-3 py-1 rounded-full text-gray-500">
@@ -177,14 +185,32 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
               <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <Building className="w-5 h-5 text-blue-600" />
                 Work Information
+                {works.length > 1 && (
+                  <span className="text-xs font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                    {works.length} assignments
+                  </span>
+                )}
               </h4>
               <div className="space-y-3 text-gray-700">
-                {user.department && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                    <span>{user.department}</span>
+                {works.map((work, i) => (
+                  <div key={i} className={i > 0 ? 'pt-3 border-t border-gray-200' : ''}>
+                    {works.length > 1 && (
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        {i === 0 ? 'Primary' : `Work ${i + 1}`}
+                      </div>
+                    )}
+                    <div className="flex items-start gap-3">
+                      <Building className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="font-medium">{work.position || '—'}</div>
+                        <div className="text-sm text-gray-500">{work.company || '—'}</div>
+                        {work.department && (
+                          <div className="text-sm text-gray-500">{work.department}</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
+                ))}
                 <div className="flex items-start gap-3">
                   <Calendar className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
                   <div className="flex flex-col">

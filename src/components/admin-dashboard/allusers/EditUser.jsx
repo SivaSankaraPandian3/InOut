@@ -3,7 +3,8 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '../../../utils/api';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import { emptyWork, getUserWorks, withSyncedWorks } from '../../../utils/userWorks';
 
 const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
   const [form, setForm] = useState({
@@ -21,6 +22,7 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
     profilePic: '',
     skills: [],
     rolesAndResponsibility: [],
+    works: [emptyWork()],
     isActive: true,
     adminComments: '',
     employeeId: '',
@@ -43,12 +45,14 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     })
       .then(({ data }) => {
+        const works = getUserWorks(data);
         setForm({
           ...data,
           skills: data.skills || [],
           rolesAndResponsibility: data.rolesAndResponsibility || [],
+          works: works.length ? works : [emptyWork()],
           bankDetails: data.bankDetails || {},
-          isActive: data.isActive ?? false
+          isActive: data.isActive ?? false,
         });
       })
       .catch(() => Swal.fire('Error', 'Failed to fetch user', 'error'));
@@ -91,7 +95,7 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const { password, ...formDataWithoutPassword } = form;
+      const { password, ...formDataWithoutPassword } = withSyncedWorks(form);
       await axios.put(API_ENDPOINTS.updateUser(userId), formDataWithoutPassword, { headers });
       Swal.fire('Success', 'User updated successfully', 'success');
       onUpdated?.();
@@ -110,6 +114,41 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
   const handleBankChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, bankDetails: { ...prev.bankDetails, [name]: value } }));
+  };
+
+  const handleWorkChange = (index, field, value) => {
+    setForm((prev) => {
+      const works = [...(prev.works || [])];
+      works[index] = { ...works[index], [field]: value };
+      const next = { ...prev, works };
+      if (index === 0) {
+        next.company = works[0].company;
+        next.department = works[0].department;
+        next.position = works[0].position;
+      }
+      return next;
+    });
+  };
+
+  const addWork = () => {
+    setForm((prev) => ({
+      ...prev,
+      works: [...(prev.works || []), emptyWork()],
+    }));
+  };
+
+  const removeWork = (index) => {
+    setForm((prev) => {
+      if ((prev.works || []).length <= 1) return prev;
+      const works = prev.works.filter((_, i) => i !== index);
+      const next = { ...prev, works };
+      if (index === 0) {
+        next.company = works[0]?.company || '';
+        next.department = works[0]?.department || '';
+        next.position = works[0]?.position || '';
+      }
+      return next;
+    });
   };
 
   return (
@@ -148,22 +187,8 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
             <label className="text-sm text-gray-600">Email</label>
             <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Email" className="w-full border rounded px-3 py-2" />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm text-gray-600">Phone</label>
-                <input type="text" name="phone" value={form.phone} onChange={handleChange} placeholder="Phone" className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Position</label>
-                <input type="text" name="position" value={form.position} onChange={handleChange} placeholder="Position" className="w-full border rounded px-3 py-2" />
-              </div>
-            </div>
-
-            <label className="text-sm text-gray-600">Company</label>
-            <input type="text" name="company" value={form.company} onChange={handleChange} placeholder="Company" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Department</label>
-            <input type="text" name="department" value={form.department} onChange={handleChange} placeholder="Department" className="w-full border rounded px-3 py-2" />
+            <label className="text-sm text-gray-600">Phone</label>
+            <input type="text" name="phone" value={form.phone} onChange={handleChange} placeholder="Phone" className="w-full border rounded px-3 py-2" />
 
             <label className="text-sm text-gray-600">Date of Joining</label>
             <input type="date" name="dateOfJoining" value={form.dateOfJoining?.slice(0, 10)} onChange={handleChange} className="w-full border rounded px-3 py-2" />
@@ -194,6 +219,83 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
               <label htmlFor="isActive" className="text-sm font-medium">Active User</label>
             </div>
 
+          </div>
+
+          {/* Multiple work assignments */}
+          <div className="col-span-1 md:col-span-2 border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">Work Assignments</h3>
+                <p className="text-xs text-gray-500 mt-0.5">One person can have multiple company / department / role entries.</p>
+              </div>
+              <button
+                type="button"
+                onClick={addWork}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+              >
+                <Plus className="w-4 h-4" />
+                Add Work
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(form.works || []).map((work, index) => (
+                <div key={index} className="border rounded-lg p-4 bg-gray-50 relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      {index === 0 ? 'Primary Work' : `Work ${index + 1}`}
+                    </span>
+                    {(form.works || []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeWork(index)}
+                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-sm text-gray-600">Company</label>
+                      <input
+                        type="text"
+                        list={`companies-${index}`}
+                        value={work.company}
+                        onChange={(e) => handleWorkChange(index, 'company', e.target.value)}
+                        placeholder="e.g. Urbancode, Jobzenter"
+                        className="w-full border rounded px-3 py-2 mt-1 bg-white"
+                      />
+                      <datalist id={`companies-${index}`}>
+                        <option value="Jobzenter" />
+                        <option value="Urbancode" />
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Department</label>
+                      <input
+                        type="text"
+                        value={work.department}
+                        onChange={(e) => handleWorkChange(index, 'department', e.target.value)}
+                        placeholder="Department"
+                        className="w-full border rounded px-3 py-2 mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Designation</label>
+                      <input
+                        type="text"
+                        value={work.position}
+                        onChange={(e) => handleWorkChange(index, 'position', e.target.value)}
+                        placeholder="Designation"
+                        className="w-full border rounded px-3 py-2 mt-1 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Admin comments - full width editable by admin */}
