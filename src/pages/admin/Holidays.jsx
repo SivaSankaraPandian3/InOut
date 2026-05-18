@@ -7,6 +7,14 @@ import { API_ENDPOINTS } from '../../utils/api';
 import './Holidays.css'; // We'll create this CSS file for custom styling
 import Loader from '../../components/admin-dashboard/common/Loader';
 
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const isPastHolidayDate = (date) => startOfDay(date) < startOfDay(new Date());
+
 const Holidays = () => {
   const [holidays, setHolidays] = useState([]);
   const [holidayMap, setHolidayMap] = useState({});
@@ -174,12 +182,47 @@ const Holidays = () => {
 
   const upcomingHolidays = getUpcomingHolidays();
 
+  const today = startOfDay(new Date());
+  const currentYear = today.getFullYear();
+  const stats = {
+    total: holidays.length,
+    upcoming: holidays.filter((h) => startOfDay(h.date) >= today).length,
+    past: holidays.filter((h) => isPastHolidayDate(h.date)).length,
+    thisYear: holidays.filter((h) => new Date(h.date).getFullYear() === currentYear).length,
+  };
+
+  const tileClassName = ({ date, view }) => {
+    if (view !== 'month') return null;
+    const holiday = holidayMap[date.toDateString()];
+    if (holiday && isPastHolidayDate(date)) return 'holiday-past-tile';
+    return null;
+  };
+
   return (
     <div className="holidays-container">
       <div className="holidays-content">
         <div className="holidays-header text-gray-600">
           <h1 className=' font-semibold'> Holiday Calendar</h1>
           <p>Click on a date to manage holidays</p>
+        </div>
+
+        <div className="holidays-stats">
+          <div className="holiday-stat-card stat-total">
+            <p className="holiday-stat-label">Total Holidays</p>
+            <p className="holiday-stat-value">{stats.total}</p>
+          </div>
+          <div className="holiday-stat-card stat-upcoming">
+            <p className="holiday-stat-label">Upcoming</p>
+            <p className="holiday-stat-value">{stats.upcoming}</p>
+          </div>
+          <div className="holiday-stat-card stat-past">
+            <p className="holiday-stat-label">Past</p>
+            <p className="holiday-stat-value">{stats.past}</p>
+          </div>
+          <div className="holiday-stat-card stat-year">
+            <p className="holiday-stat-label">This Year ({currentYear})</p>
+            <p className="holiday-stat-value">{stats.thisYear}</p>
+          </div>
         </div>
 
         <div className="calendar-section">
@@ -189,6 +232,7 @@ const Holidays = () => {
               value={selectedDate}
               onClickDay={handleDateClick}
               tileContent={tileContent}
+              tileClassName={tileClassName}
               onActiveStartDateChange={({ action, activeStartDate, value, view }) => setView(view)}
               className="holiday-calendar"
               minDetail="decade"
@@ -232,10 +276,12 @@ const Holidays = () => {
                 <tbody>
                   {holidays
                     .sort((a, b) => new Date(a.date) - new Date(b.date))
-                    .map((h) => (
-                      <tr key={h._id || h.date}>
-                        <td>{new Date(h.date).toLocaleDateString()}</td>
-                        <td>{h.name}</td>
+                    .map((h) => {
+                      const past = isPastHolidayDate(h.date);
+                      return (
+                      <tr key={h._id || h.date} className={past ? 'holiday-row-past' : ''}>
+                        <td className={past ? 'holiday-past-text' : ''}>{new Date(h.date).toLocaleDateString()}</td>
+                        <td className={past ? 'holiday-past-text' : ''}>{h.name}</td>
                         <td>
                           <button 
                             className="btn-edit"
@@ -245,7 +291,8 @@ const Holidays = () => {
                           </button>
                         </td>
                       </tr>
-                    ))
+                    );
+                    })
                   }
                 </tbody>
               </table>

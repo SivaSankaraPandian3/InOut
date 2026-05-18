@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "../../utils/api";
 import { Sync, Home as WFHIcon } from '@mui/icons-material';
@@ -56,6 +56,200 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import Loader from "../../components/admin-dashboard/common/Loader";
+import { getPrimaryWork } from "../../utils/userWorks";
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const normalizeName = (name) => (name || '').trim().toLowerCase();
+
+/** Display name on attendance rows (API often uses user.name, not employeeName). */
+const logEmployeeLabel = (log) => {
+  if (!log || typeof log !== 'object') return 'Unknown';
+  const raw =
+    (log.employeeName || '').trim() ||
+    (log.user?.name || '').trim() ||
+    [log.user?.firstName, log.user?.lastName].filter(Boolean).join(' ').trim();
+  return raw || 'Unknown';
+};
+
+const logUserId = (log) => {
+  if (!log || typeof log !== 'object') return null;
+  const id = log.userId ?? log.user?._id ?? log.user?.id;
+  return id != null && id !== '' ? String(id) : null;
+};
+
+const normalizeLogType = (type) => String(type || '').toLowerCase().replace(/[\s_-]/g, '');
+
+const mergeAttendanceCell = (cell, log) => {
+  if (!log || typeof log !== 'object') return cell;
+  const t = normalizeLogType(log.type);
+  if (t === 'checkin') {
+    if (!cell.checkIn || new Date(log.timestamp) < new Date(cell.checkIn.timestamp)) {
+      cell.checkIn = log;
+    }
+  } else if (t === 'checkout') {
+    if (!cell.checkOut || new Date(log.timestamp) > new Date(cell.checkOut.timestamp)) {
+      cell.checkOut = log;
+    }
+  }
+  return cell;
+};
+
+/** Index logs by userId, exact display name, and normalized name for report lookups. */
+const buildAttendanceIndex = (filteredLogs) => {
+  const byUserId = {};
+  const byExactName = {};
+  const byNormName = {};
+
+  const touch = (bucket, key, dateKey) => {
+    if (!bucket[key]) bucket[key] = {};
+    if (!bucket[key][dateKey]) bucket[key][dateKey] = { checkIn: null, checkOut: null };
+    return bucket[key][dateKey];
+  };
+
+  filteredLogs.forEach((log) => {
+    if (!log || !log.timestamp) return;
+    const dateKey = new Date(log.timestamp).toDateString();
+    const label = logEmployeeLabel(log);
+    const uid = logUserId(log);
+    const norm = normalizeName(label);
+
+    if (uid) mergeAttendanceCell(touch(byUserId, uid, dateKey), log);
+    if (label && label !== 'Unknown') mergeAttendanceCell(touch(byExactName, label, dateKey), log);
+    if (norm) mergeAttendanceCell(touch(byNormName, norm, dateKey), log);
+  });
+
+  return { byUserId, byExactName, byNormName };
+};
+
+const getDayAttendance = (index, employeeDisplayName, resolvedUserId, dateKey) => {
+  if (resolvedUserId && index.byUserId[resolvedUserId]?.[dateKey]) {
+    return index.byUserId[resolvedUserId][dateKey];
+  }
+  if (index.byExactName[employeeDisplayName]?.[dateKey]) {
+    return index.byExactName[employeeDisplayName][dateKey];
+  }
+  const nk = normalizeName(employeeDisplayName);
+  if (nk && index.byNormName[nk]?.[dateKey]) {
+    return index.byNormName[nk][dateKey];
+  }
+  return { checkIn: null, checkOut: null };
+};
+
+const normalizeWeeklySchedule = (ws) => {
+  if (!ws || typeof ws !== 'object') return {};
+  const dayMap = {
+    sun: 'Sunday', sunday: 'Sunday',
+    mon: 'Monday', monday: 'Monday',
+    tue: 'Tuesday', tues: 'Tuesday', tuesday: 'Tuesday',
+    wed: 'Wednesday', wednesday: 'Wednesday',
+    thu: 'Thursday', thur: 'Thursday', thurs: 'Thursday', thursday: 'Thursday',
+    fri: 'Friday', friday: 'Friday',
+    sat: 'Saturday', saturday: 'Saturday',
+  };
+  const out = {};
+  Object.entries(ws).forEach(([day, val]) => {
+    const lower = String(day).trim().toLowerCase();
+    const full = dayMap[lower] || (day.charAt(0).toUpperCase() + day.slice(1).toLowerCase());
+    if (WEEKDAYS.includes(full)) out[full] = val;
+  });
+  return out;
+};
+
+const findScheduleForEmployee = (employeeName, scheduleList, userId) => {
+  const key = normalizeName(employeeName);
+  if (!key) return null;
+  return scheduleList.find((sch) => {
+    const schUserId = sch.user?._id || sch.user?.id || sch.userId;
+    if (userId && schUserId && String(schUserId) === String(userId)) return true;
+    const names = [
+      sch.user?.name,
+      sch.name,
+      sch.employeeName,
+      [sch.user?.firstName, sch.user?.lastName].filter(Boolean).join(' '),
+    ];
+    return names.some((n) => normalizeName(n) === key);
+  }) || null;
+};
+
+const resolveEmployeeContext = (employeeName, schedules, allUsers, logs) => {
+  const safeLogs = Array.isArray(logs) ? logs.filter(Boolean) : [];
+  const sampleLog = safeLogs.find((l) => {
+    const label = logEmployeeLabel(l);
+    return normalizeName(label) === normalizeName(employeeName);
+  });
+  const userIdFromLog = logUserId(sampleLog);
+  const schedule = findScheduleForEmployee(employeeName, schedules, userIdFromLog);
+  const scheduleUserId =
+    schedule?.user?._id != null
+      ? String(schedule.user._id)
+      : schedule?.user?.id != null
+        ? String(schedule.user.id)
+        : null;
+  const resolvedUserId = userIdFromLog || scheduleUserId || null;
+
+  const weeklySchedule = normalizeWeeklySchedule(schedule?.weeklySchedule);
+
+  let user = schedule?.user;
+  if (typeof user === 'string') {
+    user = allUsers.find((u) => String(u._id) === String(user));
+  }
+  if (!user) {
+    user = allUsers.find((u) => normalizeName(u.name) === normalizeName(employeeName))
+      || (resolvedUserId && allUsers.find((u) => String(u._id) === String(resolvedUserId)));
+  }
+
+  const primary = getPrimaryWork(user || {});
+  return {
+    schedule,
+    weeklySchedule,
+    resolvedUserId,
+    position: primary.position || user?.position || schedule?.user?.position,
+    company: primary.company || user?.company || schedule?.user?.company,
+  };
+};
+
+const isScheduledWorkDay = (dateObj, weeklySchedule, isHolidayDate) => {
+  if (isHolidayDate || dateObj.getDay() === 0) return false;
+
+  const norm = normalizeWeeklySchedule(weeklySchedule);
+  const hasConfig = Object.keys(norm).length > 0;
+  if (!hasConfig) return true;
+
+  const daySchedule = norm[getDayName(dateObj)];
+  if (daySchedule === undefined) return false;
+  return !daySchedule.isLeave;
+};
+
+/** Active employee — same rule as All Users (not past / disabled). */
+const isActiveEmployee = (user) => {
+  if (!user || typeof user !== 'object') return false;
+  if (user.isActive === false) return false;
+  if (user.dateOfRelieving) return false;
+  return true;
+};
+
+const employeeIsActive = (displayName, schedules, allUsers, logs) => {
+  const { resolvedUserId, schedule } = resolveEmployeeContext(displayName, schedules, allUsers, logs);
+
+  const byId =
+    resolvedUserId &&
+    allUsers.find((u) => String(u._id) === String(resolvedUserId));
+  if (byId) return isActiveEmployee(byId);
+
+  const byName = allUsers.find(
+    (u) => normalizeName(u.name) === normalizeName(displayName)
+  );
+  if (byName) return isActiveEmployee(byName);
+
+  let schUser = schedule?.user;
+  if (typeof schUser === 'string') {
+    schUser = allUsers.find((u) => String(u._id) === String(schUser));
+  }
+  if (schUser && typeof schUser === 'object') return isActiveEmployee(schUser);
+
+  return false;
+};
 
 
 
@@ -82,11 +276,58 @@ const getDayName = (date) => {
   return date.toLocaleDateString("en-US", { weekday: "long" });
 };
 
+/** Calendar date key YYYY-MM-DD without timezone shift (fixes UTC holiday dates). */
+const toDateKey = (date) => {
+  if (!date) return '';
+  const str = String(date);
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const normalizeHolidayList = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.holidays)) return data.holidays;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+};
+
+const filterHolidaysForMonth = (list, year, monthIndex0) => {
+  const month = monthIndex0 + 1;
+  return normalizeHolidayList(list).filter((h) => {
+    const key = toDateKey(h.date);
+    if (!key) return false;
+    const [y, m] = key.split('-').map(Number);
+    return y === year && m === month;
+  });
+};
+
+const eachDateInRange = (from, to) => {
+  const dates = [];
+  const start = new Date(from);
+  const end = new Date(to);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return dates;
+  const cur = new Date(start);
+  while (cur <= end) {
+    dates.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+};
+
 const Report = () => {
   const [logs, setLogs] = useState([]);
   const [schedules, setSchedules] = useState([]);
-  const [holidays, setHolidays] = useState([]); // Add state for holidays
+  const [allUsers, setAllUsers] = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  const [approvedLeaves, setApprovedLeaves] = useState([]);
   const [openIndex, setOpenIndex] = useState(null);
+  /** Bump to refetch without full page reload (replaces localStorage cache for this page). */
+  const [dataFetchNonce, setDataFetchNonce] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -104,45 +345,39 @@ const Report = () => {
       const year = selectedMonth.getFullYear();
       const month = selectedMonth.getMonth() + 1;
 
-      // Create cache keys for this month
-      const CACHE_KEY = `attendanceCache_${year}_${month}`;
-      const CACHE_TIME_KEY = `attendanceCacheTime_${year}_${month}`;
-      const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-      // 1️⃣ Check if cached and not expired
-      const cached = localStorage.getItem(CACHE_KEY);
-      const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
-
-      if (cached && cachedTime && (Date.now() - cachedTime < CACHE_TTL)) {
-        const cachedData = JSON.parse(cached);
-        console.log("⚡ Using cached data");
-        setLogs(cachedData.logs);
-        setSchedules(cachedData.schedules);
-        setHolidays(cachedData.holidays);
-        setLoading(false);
-        return;
-      }
-
-      // 2️⃣ If cache expired → fetch new data
       try {
         console.log("⏳ Fetching fresh data...");
-        const [logsRes, schedulesRes, holidaysRes] = await Promise.all([
-          axios.get(API_ENDPOINTS.getRecentAttendanceLogs, { headers }),
+        const [logsRes, schedulesRes, leavesRes, allHolidaysRes, usersRes] = await Promise.all([
+          axios.get(API_ENDPOINTS.getAttendanceAll, { headers }),
           axios.get(API_ENDPOINTS.getSchedules, { headers }),
-          axios.get(`${API_ENDPOINTS.getHolidaysByMonth}?year=${year}&month=${month}`, { headers })
+          axios.get(API_ENDPOINTS.getAllLeaves, { headers }),
+          axios.get(API_ENDPOINTS.getHolidays, { headers }),
+          axios.get(API_ENDPOINTS.getUsers, { headers }),
         ]);
 
-        setLogs(logsRes.data);
-        setSchedules(schedulesRes.data);
-        setHolidays(holidaysRes.data);
+        let holidayData = filterHolidaysForMonth(allHolidaysRes.data, year, selectedMonth.getMonth());
 
-        // 3️⃣ Save to cache
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          logs: logsRes.data,
-          schedules: schedulesRes.data,
-          holidays: holidaysRes.data
-        }));
-        localStorage.setItem(CACHE_TIME_KEY, Date.now());
+        if (holidayData.length === 0) {
+          try {
+            const monthHolidaysRes = await axios.get(
+              `${API_ENDPOINTS.getHolidaysByMonth}?year=${year}&month=${month}`,
+              { headers }
+            );
+            holidayData = filterHolidaysForMonth(monthHolidaysRes.data, year, selectedMonth.getMonth());
+          } catch {
+            /* use empty */
+          }
+        }
+
+        const leavesData = Array.isArray(leavesRes.data) ? leavesRes.data : [];
+
+        const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
+
+        setLogs(Array.isArray(logsRes.data) ? logsRes.data.filter(Boolean) : []);
+        setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
+        setAllUsers(usersData);
+        setHolidays(holidayData);
+        setApprovedLeaves(leavesData);
       }
       catch (err) {
         console.error("Failed to fetch data:", err);
@@ -153,35 +388,58 @@ const Report = () => {
     };
 
     fetchData();
-  }, [token, selectedMonth]);
+  }, [token, selectedMonth, dataFetchNonce]);
   // Add selectedMonth as dependency
 
-  // Helper function to check if a date is a holiday
-  const isHoliday = (date) => {
-    return holidays.some(holiday => {
-      const holidayDate = new Date(holiday.date);
-      return holidayDate.toDateString() === date.toDateString();
+  const holidayDateKeys = useMemo(
+    () => new Set(holidays.map((h) => toDateKey(h.date)).filter(Boolean)),
+    [holidays]
+  );
+
+  const isHoliday = (date) => holidayDateKeys.has(toDateKey(date));
+
+  const getHolidayName = (date) => {
+    const key = toDateKey(date);
+    const holiday = holidays.find((h) => toDateKey(h.date) === key);
+    return holiday ? holiday.name : null;
+  };
+
+  const getApprovedLeaveOnDate = (employeeName, dateObj) => {
+    const key = toDateKey(dateObj);
+    const empKey = normalizeName(employeeName);
+    return approvedLeaves.find((leave) => {
+      const name = leave.user?.name || leave.employeeName;
+      if (normalizeName(name) !== empKey) return false;
+      if ((leave.status || '').toLowerCase() !== 'approved') return false;
+      return eachDateInRange(leave.fromDate, leave.toDate).some((d) => toDateKey(d) === key);
     });
   };
 
-  // Helper function to get holiday name for a date
-  const getHolidayName = (date) => {
-    const holiday = holidays.find(holiday => {
-      const holidayDate = new Date(holiday.date);
-      return holidayDate.toDateString() === date.toDateString();
-    });
-    return holiday ? holiday.name : null;
-  };
+  const isOnApprovedLeave = (employeeName, dateObj) => !!getApprovedLeaveOnDate(employeeName, dateObj);
 
 
   const [year, month] = [selectedMonth.getFullYear(), selectedMonth.getMonth()];
   const allDates = getDatesInMonth(year, month);
 
 
-  const employees = [...new Set(logs.map((log) => log.employeeName || "Unknown"))]
-    .filter(employee =>
-      employee.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const employees = useMemo(() => {
+    const names = new Set();
+    allUsers.forEach((u) => {
+      if (isActiveEmployee(u) && u.name) names.add(u.name);
+    });
+    logs.forEach((log) => {
+      const label = logEmployeeLabel(log);
+      if (label && label !== 'Unknown') names.add(label);
+    });
+    schedules.forEach((sch) => {
+      const n = sch.user?.name || sch.name;
+      if (n) names.add(n);
+    });
+    return [...names]
+      .filter((employee) => employeeIsActive(employee, schedules, allUsers, logs))
+      .filter((employee) => employee.toLowerCase().includes(searchTerm.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
+  }, [logs, schedules, allUsers, searchTerm]);
   const monthYearLabel = selectedMonth.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -201,28 +459,29 @@ const Report = () => {
     const wb = XLSX.utils.book_new();
 
     const summaryData = [
-      ['Name', 'Position', 'Company', 'Total Days', 'Present', 'Absent', 'Late']
+      ['Name', 'Position', 'Company', 'Total Days', 'Present', 'Absent', 'Holidays', 'Leaves', 'Late']
     ];
 
     // Build Summary Sheet Data
     employees.forEach((employee) => {
-      const userSchedule = schedules.find(sch => sch.user?.name === employee);
-      const weeklySchedule = userSchedule?.weeklySchedule || {};
-      const stats = getEmployeeStats(employee, weeklySchedule);
+      const { weeklySchedule, position, company, resolvedUserId } = resolveEmployeeContext(employee, schedules, allUsers, logs);
+      const stats = getEmployeeStats(employee, weeklySchedule, resolvedUserId);
 
       summaryData.push([
         employee,
-        userSchedule?.user?.position || 'Position',
-        userSchedule?.user?.company || 'Company',
+        position || 'Position',
+        company || 'Company',
         stats.scheduledWorkingDays,
         stats.presentCount,
         stats.absentCount,
+        stats.holidayCount,
+        stats.leaveCount,
         stats.lateCount
       ]);
     });
 
     const summaryWS = XLSX.utils.aoa_to_sheet(summaryData);
-    summaryWS['!autofilter'] = { ref: "A1:G1" };
+    summaryWS['!autofilter'] = { ref: "A1:I1" };
     summaryWS['!cols'] = fitToColumn(summaryData);
     XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
 
@@ -232,16 +491,16 @@ const Report = () => {
         ['Date', 'Day', 'CheckIn', 'CheckOut', 'WorkHours', 'Status', 'Late', 'EarlyLeave']
       ];
 
-      const userSchedule = schedules.find(sch => sch.user?.name === employee);
-      const weeklySchedule = userSchedule?.weeklySchedule || {};
+      const { weeklySchedule, resolvedUserId } = resolveEmployeeContext(employee, schedules, allUsers, logs);
+      const normSchedule = normalizeWeeklySchedule(weeklySchedule);
 
       allDates.forEach((dateObj) => {
         const dateKey = dateObj.toDateString();
         const dayName = getDayName(dateObj);
-        const attendance = grouped[employee]?.[dateKey];
+        const attendance = getDayAttendance(attendanceIndex, employee, resolvedUserId, dateKey);
         const checkIn = attendance?.checkIn;
         const checkOut = attendance?.checkOut;
-        const scheduled = weeklySchedule[dayName];
+        const scheduled = normSchedule[dayName];
 
         const checkInTime = checkIn
           ? new Date(checkIn.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -251,9 +510,13 @@ const Report = () => {
           ? new Date(checkOut.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : '';
 
+        const approvedLeave = getApprovedLeaveOnDate(employee, dateObj);
+
         let status = '—';
         if (isHoliday(dateObj)) {
-          status = 'Leave';
+          status = getHolidayName(dateObj) || 'Holiday';
+        } else if (approvedLeave) {
+          status = `Leave (${approvedLeave.leaveType || 'Approved'})`;
         } else if (scheduled?.isLeave && checkIn) {
           const officeName = checkIn.officeName?.toLowerCase() || '';
           const presentType = (!officeName.includes("velechery") && !officeName.includes("pallikaranai")) ? 'WFH' : 'Present';
@@ -322,32 +585,25 @@ const Report = () => {
 
 
 
-  const filteredLogs = logs.filter((log) => {
-    const date = new Date(log.timestamp);
-    return date.getFullYear() === year && date.getMonth() === month;
-  });
+  const filteredLogs = useMemo(
+    () =>
+      logs.filter((log) => {
+        if (!log || !log.timestamp) return false;
+        const date = new Date(log.timestamp);
+        return date.getFullYear() === year && date.getMonth() === month;
+      }),
+    [logs, year, month]
+  );
 
-  const grouped = {};
-  filteredLogs.forEach((log) => {
-    const emp = log.employeeName || "Unknown";
-    const dateKey = new Date(log.timestamp).toDateString();
-    if (!grouped[emp]) grouped[emp] = {};
-    if (!grouped[emp][dateKey]) grouped[emp][dateKey] = { checkIn: null, checkOut: null };
-    if (log.type === "check-in") {
-      if (!grouped[emp][dateKey].checkIn || new Date(log.timestamp) < new Date(grouped[emp][dateKey].checkIn.timestamp)) {
-        grouped[emp][dateKey].checkIn = log;
-      }
-    }
-    if (log.type === "check-out") {
-      if (!grouped[emp][dateKey].checkOut || new Date(log.timestamp) > new Date(grouped[emp][dateKey].checkOut.timestamp)) {
-        grouped[emp][dateKey].checkOut = log;
-      }
-    }
-  });
+  const attendanceIndex = useMemo(
+    () => buildAttendanceIndex(filteredLogs),
+    [filteredLogs]
+  );
 
-  const getEmployeeStats = (employee, weeklySchedule) => {
+  const getEmployeeStats = (employee, weeklySchedule, resolvedUserId) => {
     let presentCount = 0;
     let absentCount = 0;
+    let holidayCount = 0;
     let leaveCount = 0;
     let wfhCount = 0;
     let lateCount = 0;
@@ -361,23 +617,25 @@ const Report = () => {
       const today = new Date();
       const isFuture = dateObj > today;
       const dayName = getDayName(dateObj);
-      const scheduled = weeklySchedule[dayName];
+      const normSchedule = normalizeWeeklySchedule(weeklySchedule);
+      const scheduled = normSchedule[dayName];
       const isHolidayDate = isHoliday(dateObj);
+      const workDay = isScheduledWorkDay(dateObj, weeklySchedule, isHolidayDate);
 
       if (isFuture) return;
 
-      if (scheduled && !scheduled.isLeave && dateObj.getDay() !== 0 && !isHolidayDate) {
+      if (workDay) {
         scheduledWorkingDays++;
       }
 
-      const attendance = grouped[employee]?.[dateKey];
+      const attendance = getDayAttendance(attendanceIndex, employee, resolvedUserId, dateKey);
       const checkIn = attendance?.checkIn;
       const checkOut = attendance?.checkOut;
 
       if (isHolidayDate) {
-        leaveCount++;
+        holidayCount++;
       }
-      else if (scheduled?.isLeave) {
+      else if (scheduled?.isLeave || isOnApprovedLeave(employee, dateObj)) {
         leaveCount++;
       }
       else if (checkIn && !checkOut) {
@@ -414,7 +672,11 @@ const Report = () => {
           }
         }
       }
-      else if (dateObj.getDay() !== 0 && !isHolidayDate) {
+      else if (
+        workDay &&
+        !isOnApprovedLeave(employee, dateObj) &&
+        !scheduled?.isLeave
+      ) {
         absentCount++;
       }
     });
@@ -422,6 +684,7 @@ const Report = () => {
     return {
       presentCount,
       absentCount,
+      holidayCount,
       leaveCount,
       wfhCount,
       lateCount,
@@ -452,10 +715,15 @@ const Report = () => {
             <Grid item xs={12} md={6}>
               <DatePicker
                 views={["year", "month"]}
+                openTo="month"
                 label="Select Month"
                 value={selectedMonth}
-                onChange={(newValue) => setSelectedMonth(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth />}
+                onChange={(newValue) => {
+                  if (newValue) {
+                    setSelectedMonth(new Date(newValue.getFullYear(), newValue.getMonth(), 1));
+                  }
+                }}
+                slotProps={{ textField: { fullWidth: true } }}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -480,9 +748,17 @@ const Report = () => {
                 Download Detailed Excel
               </Button>&nbsp;
               <Button  variant="contained" color="primary" onClick={() => {
-                localStorage.removeItem("attendanceCache_${year}_${month}");
-                localStorage.removeItem("attendanceCacheTime_${year}_${month}");
-                window.location.reload();
+                try {
+                  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+                    const k = localStorage.key(i);
+                    if (k && (k.startsWith('attendanceCache') || k.startsWith('attendanceCacheTime'))) {
+                      localStorage.removeItem(k);
+                    }
+                  }
+                } catch {
+                  /* ignore */
+                }
+                setDataFetchNonce((n) => n + 1);
               }}><Sync/>
                 Refresh Data
                 
@@ -491,12 +767,18 @@ const Report = () => {
           </Grid>
 
           <Box id="report-content" >
-            <Stack direction="row" alignItems="center" spacing={2} mb={4}>
+            <Stack direction="row" alignItems="center" spacing={2} mb={2} flexWrap="wrap">
               <h1 className="text-2xl font-bold text-gray-600">
-
                 {monthYearLabel} User wise Attendance Report
               </h1>
-
+              <Chip label={`${employees.length} Active`} color="success" size="small" variant="outlined" />
+              <Chip label={`${holidays.length} Holidays`} color="secondary" size="small" variant="outlined" />
+              <Chip
+                label={`${approvedLeaves.filter((l) => (l.status || '').toLowerCase() === 'approved' && new Date(l.fromDate).getFullYear() === year && new Date(l.fromDate).getMonth() === month).length} Approved Leaves`}
+                color="info"
+                size="small"
+                variant="outlined"
+              />
             </Stack>
 
 
@@ -504,32 +786,34 @@ const Report = () => {
             {employees.length === 0 ? (
               <Paper elevation={3} sx={{ p: 3, textAlign: "center" }}>
                 <Typography variant="h6">
-                  {searchTerm ? "No matching employees found" : "No attendance data for this month"}
+                  {searchTerm ? "No matching active employees found" : "No active employees for this month"}
                 </Typography>
               </Paper>
             ) : (
               employees.map((employee, index) => {
-                const userSchedule = schedules.find(sch => sch.user?.name === employee);
-                const weeklySchedule = userSchedule?.weeklySchedule || {};
+                const { weeklySchedule, position: role, company: org, resolvedUserId } = resolveEmployeeContext(
+                  employee,
+                  schedules,
+                  allUsers,
+                  logs
+                );
                 const {
                   presentCount,
                   absentCount,
+                  holidayCount,
                   leaveCount,
                   wfhCount,
                   lateCount,
                   earlyCount,
                   scheduledWorkingDays,
                   incompleteDays
-                } = getEmployeeStats(employee, weeklySchedule);
+                } = getEmployeeStats(employee, weeklySchedule, resolvedUserId);
 
-                const sampleLog = logs.find((log) => log.employeeName === employee);
-
-                const userInfo = userSchedule?.user;
-
-                const position = userInfo?.position || "Position not specified";
-                const company = userInfo?.company || "Company not specified";
-                const attendancePercentage = scheduledWorkingDays > 0
-                  ? Math.round((presentCount / scheduledWorkingDays) * 100)
+                const position = role || "Position not specified";
+                const company = org || "Company not specified";
+                const attendanceDenominator = scheduledWorkingDays || presentCount + absentCount;
+                const attendancePercentage = attendanceDenominator > 0
+                  ? Math.min(100, Math.round((presentCount / attendanceDenominator) * 100))
                   : 0;
 
                 return (
@@ -605,6 +889,14 @@ const Report = () => {
                                 </Paper>
                               </Grid>
                             
+                              <Grid item xs={6} sm={4} md={3}>
+                                <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
+                                  <Typography variant="h6" sx={{ color: '#7c3aed' }}>
+                                    {holidayCount}
+                                  </Typography>
+                                  <Typography variant="body2">Holidays</Typography>
+                                </Paper>
+                              </Grid>
                               <Grid item xs={6} sm={4} md={3}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color="info.main">
@@ -689,11 +981,12 @@ const Report = () => {
                                   const today = new Date();
                                   const isFuture = dateObj > today;
                                   const dayName = getDayName(dateObj);
-                                  const scheduled = weeklySchedule[dayName];
+                                  const scheduled = normalizeWeeklySchedule(weeklySchedule)[dayName];
                                   const isHolidayDate = isHoliday(dateObj);
+                                  const workDay = isScheduledWorkDay(dateObj, weeklySchedule, isHolidayDate);
                                   const holidayName = getHolidayName(dateObj);
 
-                                  const attendance = grouped[employee]?.[dateKey];
+                                  const attendance = getDayAttendance(attendanceIndex, employee, resolvedUserId, dateKey);
                                   const checkIn = attendance?.checkIn;
                                   const checkOut = attendance?.checkOut;
 
@@ -720,6 +1013,8 @@ const Report = () => {
                                     workHours = `${h}h ${m}m`;
                                   }
 
+                                  const approvedLeave = getApprovedLeaveOnDate(employee, dateObj);
+
                                   let status = "—";
                                   let statusColor = "default";
                                   let late = false;
@@ -727,12 +1022,14 @@ const Report = () => {
                                   let isWFH = false;
                                   if (isFuture) {
                                     status = "";
-                                  }
-                                  else if (isHolidayDate) {
+                                  } else if (isHolidayDate) {
                                     status = holidayName || "Holiday";
                                     statusColor = "info";
+                                  } else if (approvedLeave) {
+                                    status = `Leave (${approvedLeave.leaveType || 'Approved'})`;
+                                    statusColor = "info";
                                   } else if (scheduled?.isLeave) {
-                                    status = "Leave";
+                                    status = "Scheduled Leave";
                                     statusColor = "info";
                                   } else if (checkIn && checkOut) {
                                     const officeName = checkIn.officeName?.toLowerCase() || '';
@@ -763,7 +1060,10 @@ const Report = () => {
                                     status = "Incomplete";
                                     statusColor = "warning";
                                   }
-                                  else if (dateObj.getDay() !== 0 && scheduled && !scheduled.isLeave) { // Not Sunday and scheduled to work
+                                  else if (
+                                    workDay &&
+                                    !isOnApprovedLeave(employee, dateObj)
+                                  ) {
                                     status = "Absent";
                                     statusColor = "error";
                                   }
@@ -820,7 +1120,13 @@ const Report = () => {
                                         </Stack>
                                       </TableCell>
                                       <TableCell align="center">
-                                        {scheduled?.isLeave ? "Leave" : `${scheduled?.start || "—"} - ${scheduled?.end || "—"}`}
+                                        {isHolidayDate
+                                          ? (holidayName || 'Holiday')
+                                          : approvedLeave
+                                            ? `Leave (${approvedLeave.leaveType || 'Approved'})`
+                                            : scheduled?.isLeave
+                                              ? 'Scheduled Leave'
+                                              : `${scheduled?.start || "—"} - ${scheduled?.end || "—"}`}
                                       </TableCell>
                                       <TableCell align="center">{workHours}</TableCell>
                                       <TableCell align="center">

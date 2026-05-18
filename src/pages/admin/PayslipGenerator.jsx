@@ -330,10 +330,13 @@ const theme = createTheme({
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DatePicker
                 views={["year", "month"]}
+                openTo="month"
                 label="Select Month"
                 value={selectedMonth}
-                onChange={(newValue) => setSelectedMonth(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth />}
+                onChange={(newValue) => {
+                  if (newValue) setSelectedMonth(newValue);
+                }}
+                slotProps={{ textField: { fullWidth: true } }}
               />
             </LocalizationProvider>
           </Grid>
