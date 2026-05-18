@@ -191,7 +191,17 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
             <input type="text" name="phone" value={form.phone} onChange={handleChange} placeholder="Phone" className="w-full border rounded px-3 py-2" />
 
             <label className="text-sm text-gray-600">Date of Joining</label>
-            <input type="date" name="dateOfJoining" value={form.dateOfJoining?.slice(0, 10)} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+            <input type="date" name="dateOfJoining" value={form.dateOfJoining?.slice(0, 10) || ''} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+
+            <label className="text-sm text-gray-600">Date of Relieving</label>
+            <input
+              type="date"
+              name="dateOfRelieving"
+              value={form.dateOfRelieving?.slice(0, 10) || ''}
+              onChange={handleChange}
+              className="w-full border rounded px-3 py-2"
+            />
+            <p className="text-xs text-gray-500 -mt-1">Leave empty if the employee is still working.</p>
           </div>
 
           <div className="space-y-3">
