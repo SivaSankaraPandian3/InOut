@@ -49,7 +49,10 @@ const PayslipPreview = ({ payslipData, onBack }) => {
       : "Urbancode Edutech Solutions Pvt Ltd"}
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        No 9/29, 5th street, Kamakoti nagar, Pallikaranai, Chennai - 600100
+        9/29, 5th Street Kamakoti Nagar, Pallikaranai, Chennai - 600100
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block">
+        CINNO - U46512TN2025PTC175901 || GSTNO-33AADCU7262Q1ZR
       </Typography>
     </Box>
 

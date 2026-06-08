@@ -1,20 +1,17 @@
 import React, { useState } from "react";
+import { officePresentBadgeClass } from "../../../utils/branches";
+import {
+  getAttendanceImage,
+  resolveAttendanceImageUrl,
+} from "../../../utils/attendanceImage";
 
 const RecentAttendanceTable = ({ logs = [] }) => {
   const [modalImage, setModalImage] = useState(null);
 
-  const handleImageClick = (imageUrl) => {
-    setModalImage(imageUrl);
-  };
-
-  const closeModal = () => {
-    setModalImage(null);
-  };
-
-  const groupLogsByEmployeeAndDate = (logs) => {
+  const groupLogsByEmployeeAndDate = (logList) => {
     const grouped = {};
 
-    logs.forEach((log) => {
+    logList.forEach((log) => {
       const dateKey = new Date(log.timestamp).toDateString();
       const key = `${log.employeeName}-${dateKey}`;
 
@@ -40,126 +37,100 @@ const RecentAttendanceTable = ({ logs = [] }) => {
   const groupedLogs = groupLogsByEmployeeAndDate(logs);
 
   return (
-    <div className="overflow-x-auto rounded shadow bg-white w-full mt-4">
-      <h2 className="text-lg font-semibold text-gray-800 px-4 py-3 border-b">
-        Recent Attendance Logs
-      </h2>
-      <table className="min-w-full text-sm text-left">
-        <thead className="bg-gray-100 text-gray-700 uppercase">
+    <div className="uc-table-panel">
+      <h2>Recent Attendance Logs</h2>
+      <table className="uc-table">
+        <thead>
           <tr>
-            <th className="px-4 py-3">Employee</th>
-            <th className="px-4 py-3">Check-In</th>
-            <th className="px-4 py-3">Check-Out</th>
-            <th className="px-4 py-3">Hours</th>
-            <th className="px-4 py-3">Office (In)</th>
-            <th className="px-4 py-3">Office (Out)</th>
-            <th className="px-4 py-3">Image (In)</th>
-            <th className="px-4 py-3">Image (Out)</th>
+            <th>Employee</th>
+            <th>Check-In</th>
+            <th>Check-Out</th>
+            <th>Hours</th>
+            <th>Office (In)</th>
+            <th>Office (Out)</th>
+            <th>Image (In)</th>
+            <th>Image (Out)</th>
           </tr>
         </thead>
-        <tbody className="text-gray-800">
+        <tbody>
           {groupedLogs.length === 0 ? (
             <tr>
-              <td colSpan="8" className="px-4 py-6 text-center text-gray-500">
+              <td colSpan="8" className="uc-table-empty">
                 No recent attendance
               </td>
             </tr>
           ) : (
             groupedLogs.map((entry, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50 transition">
-                <td className="px-4 py-2 font-medium">
-                  {entry.employeeName || "Unknown"}
+              <tr key={index}>
+                <td style={{ fontWeight: 500 }}>{entry.employeeName || "Unknown"}</td>
+                <td className="uc-text-green">
+                  {entry.checkIn
+                    ? new Date(entry.checkIn.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "—"}
                 </td>
-
-                {/* Check-in */}
-                <td className="px-4 py-2">
-                  {entry.checkIn ? (
-                    <span className=" text-green-500">
-                      {new Date(entry.checkIn.timestamp).toLocaleTimeString(
-                        [],
-                        { hour: "2-digit", minute: "2-digit" }
-                      )}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
+                <td className="uc-text-blue">
+                  {entry.checkOut
+                    ? new Date(entry.checkOut.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "—"}
                 </td>
-                <td className="px-4 py-2">
-                  {entry.checkOut ? (
-                    <span className=" text-blue-500">
-                      {new Date(entry.checkOut.timestamp).toLocaleTimeString(
-                        [],
-                        { hour: "2-digit", minute: "2-digit" }
-                      )}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-
-                <td className="px-4 py-2">
+                <td>
                   {entry.checkIn && entry.checkOut
                     ? (() => {
-                        const start = new Date(entry.checkIn.timestamp);
-                        const end = new Date(entry.checkOut.timestamp);
-                        const diffMs = end - start;
+                        const diffMs =
+                          new Date(entry.checkOut.timestamp) - new Date(entry.checkIn.timestamp);
                         const hours = Math.floor(diffMs / (1000 * 60 * 60));
                         const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
                         return `${hours}h ${minutes}m`;
                       })()
                     : "—"}
                 </td>
-                {/* Office info */}
-                <td className="px-4 py-2">
-                  <span
-                    className={`font-medium ${
-                      (entry.checkIn?.officeName === "Pallikaranai" &&
-                        "px-2 py-1 rounded-full text-white bg-green-500 text-xs") ||
-                      (entry.checkIn?.officeName === "Velechery" &&
-                        "px-2 py-1 rounded-full text-white bg-blue-500 text-xs") ||
-                      "text-red-600"
-                    }`}
-                  >
+                <td>
+                  <span className={officePresentBadgeClass(entry.checkIn?.officeName)}>
                     {entry.checkIn?.officeName || "—"}
                   </span>
                 </td>
-                <td className="px-4 py-2">
-                  <span
-                    className={`font-medium ${
-                      (entry.checkOut?.officeName === "Pallikaranai" &&
-                        "px-2 py-1 rounded-full text-white bg-green-500 text-xs") ||
-                      (entry.checkOut?.officeName === "Velechery" &&
-                        "px-2 py-1 rounded-full text-white bg-blue-500 text-xs") ||
-                      "text-red-600"
-                    }`}
-                  >
-                  {entry.checkOut?.officeName || "—"}</span>
+                <td>
+                  <span className={officePresentBadgeClass(entry.checkOut?.officeName)}>
+                    {entry.checkOut?.officeName || "—"}
+                  </span>
                 </td>
-
-                {/* Images */}
-                <td className="px-4 py-2">
-                  {entry.checkIn?.image ? (
-                    <img
-                      src={entry.checkIn.image}
-                      alt="Check-In"
-                      className="w-14 h-14 object-cover rounded border cursor-pointer hover:opacity-80"
-                      onClick={() => handleImageClick(entry.checkIn.image)}
-                    />
-                  ) : (
-                    "—"
-                  )}
+                <td>
+                  {(() => {
+                    const src = resolveAttendanceImageUrl(getAttendanceImage(entry.checkIn));
+                    return src ? (
+                      <img
+                        src={src}
+                        alt="Check-In"
+                        style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+                        onClick={() => setModalImage(src)}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      "—"
+                    );
+                  })()}
                 </td>
-                <td className="px-4 py-2">
-                  {entry.checkOut?.image ? (
-                    <img
-                      src={entry.checkOut.image}
-                      alt="Check-Out"
-                      className="w-14 h-14 object-cover rounded border cursor-pointer hover:opacity-80"
-                      onClick={() => handleImageClick(entry.checkOut.image)}
-                    />
-                  ) : (
-                    "—"
-                  )}
+                <td>
+                  {(() => {
+                    const src = resolveAttendanceImageUrl(getAttendanceImage(entry.checkOut));
+                    return src ? (
+                      <img
+                        src={src}
+                        alt="Check-Out"
+                        style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+                        onClick={() => setModalImage(src)}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      "—"
+                    );
+                  })()}
                 </td>
               </tr>
             ))
@@ -167,22 +138,27 @@ const RecentAttendanceTable = ({ logs = [] }) => {
         </tbody>
       </table>
 
-      {/* Image modal */}
       {modalImage && (
         <div
-          className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center"
-          onClick={closeModal}
+          role="presentation"
+          onClick={() => setModalImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <div className="bg-white rounded-lg overflow-hidden p-4 max-w-[90%] max-h-[90%]">
-            <img
-              src={modalImage}
-              alt="Preview"
-              className="max-h-[80vh] object-contain"
-            />
-          </div>
+          <img
+            src={modalImage}
+            alt="Preview"
+            style={{ maxHeight: '80vh', maxWidth: '90%', objectFit: 'contain', background: '#fff', padding: 8, borderRadius: 8 }}
+          />
         </div>
       )}
-       
     </div>
   );
 };

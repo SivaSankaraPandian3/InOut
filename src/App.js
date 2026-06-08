@@ -21,7 +21,7 @@ import LeaveRequestsAdmin from './pages/admin/LeaveRequests';
 import AttendancePage from './pages/employee/AttendancePage';
 import Leave from './pages/employee/ApplyLeaveForm';
 import EditUser from './components/EditUser';
-import PendingUsers from './pages/admin/PendingUsers';
+import AddUser from './pages/admin/AddUser';
 import AllUsers from './pages/admin/AllUsers';
 import UserDetail from './pages/admin/UserDetail';
 import EditUserPage from './pages/admin/EditUserPage';
@@ -40,6 +40,7 @@ import InternshipLetter from './pages/admin/InternshipLetter';
 import InternshipOfferLetter from './pages/admin/InternshipOfferLetter';
 import AllLetters from './pages/admin/AllLetters';
 import ProtectedRoute from './components/ProtectedRoute';
+import PendingUsers from './pages/admin/PendingUsers';
 
 function App() {
   //  const navigate = useNavigate();
@@ -97,6 +98,7 @@ function App() {
           <Route path="/internship-offer" element={<InternshipOfferLetter />} />
           <Route path="/all-letters" element={<AllLetters />} />
           <Route path="/pending-users" element={<PendingUsers />} />
+          <Route path="/add-user" element={<AddUser />} />
           <Route path="/all-users" element={<AllUsers />} />
           <Route path="/all-users/:userId" element={<UserDetail />} />
           <Route path="/all-users/:userId/edit" element={<EditUserPage />} />

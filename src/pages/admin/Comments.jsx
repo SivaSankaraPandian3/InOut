@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
 import {
+  getAttendanceImage,
+  resolveAttendanceImageUrl,
+} from '../../utils/attendanceImage';
+import {
   Box,
   Typography,
   Paper,
@@ -103,13 +107,16 @@ const CommentsPage = () => {
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  {row.image ? (
-                    <a href={row.image} target="_blank" rel="noreferrer">
-                      <Avatar src={row.image} variant="rounded" sx={{ width: 48, height: 48 }} />
+                  {(() => {
+                    const imgSrc = resolveAttendanceImageUrl(getAttendanceImage(row));
+                    return imgSrc ? (
+                    <a href={imgSrc} target="_blank" rel="noreferrer">
+                      <Avatar src={imgSrc} variant="rounded" sx={{ width: 48, height: 48 }} />
                     </a>
                   ) : (
                     <Avatar sx={{ width: 36, height: 36 }}>{(row.employeeName || 'U').charAt(0)}</Avatar>
-                  )}
+                  );
+                  })()}
                 </TableCell>
               </TableRow>
             );

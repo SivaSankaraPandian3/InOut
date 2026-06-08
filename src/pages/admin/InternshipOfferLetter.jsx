@@ -3,6 +3,7 @@ import { Box, Container, Typography, TextField, Button, FormControl, InputLabel,
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
 import letterheadUrl from '../../assets/letterhead.pdf';
+import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
 
@@ -166,6 +167,7 @@ const InternshipOfferLetter = () => {
         } catch (sigErr) { console.error('Signature embed error', sigErr); }
       }
 
+  await shrinkLetterheadPhoneIconOnAllPages(pdfDoc);
   const pdfBytes = await pdfDoc.save();
   setPdfBytesData(pdfBytes);
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -268,7 +270,7 @@ const InternshipOfferLetter = () => {
                 <MenuItem disabled><em>Loading...</em></MenuItem>
               ) : (
                 candidates.map(c => (
-                  <MenuItem key={c._id} value={c._id}>{c.name} — {c.position || c.degree || ''}</MenuItem>
+                  <MenuItem key={c._id} value={c._id}>{c.name} ΓÇö {c.position || c.degree || ''}</MenuItem>
                 ))
               )}
             </Select>

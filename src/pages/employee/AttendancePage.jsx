@@ -14,6 +14,8 @@ import AttendanceCards from "../../components/attendance/AttendanceCards";
 import ActivityLog from "../../components/attendance/ActivityLog";
 import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
+import { appendAttendanceImage } from "../../utils/attendanceImage";
+import { resolveOfficeFromLocation } from "../../utils/officeLocations";
 
 function AttendancePage() {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ function AttendancePage() {
   const [compressedBlob, setCompressedBlob] = useState(null);
   const [capturedTime, setCapturedTime] = useState(null);
   const [location, setLocation] = useState("");
+  const [detectedOffice, setDetectedOffice] = useState(null);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -100,7 +103,11 @@ function AttendancePage() {
 
   const getLocation = () => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => setLocation(`${pos.coords.latitude},${pos.coords.longitude}`),
+      (pos) => {
+        const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
+        setLocation(coords);
+        setDetectedOffice(resolveOfficeFromLocation(coords));
+      },
       () =>
         Swal.fire({
           icon: "error",
@@ -178,15 +185,14 @@ function AttendancePage() {
     const formData = new FormData();
     formData.append("type", type);
     formData.append("location", location);
-    formData.append("image", compressedBlob);
-  // include optional comment with attendance
-  formData.append('comment', comment);
+    formData.append("comment", comment);
+    appendAttendanceImage(formData, compressedBlob);
+
     try {
-      setIsSubmitting(true); // start loading
+      setIsSubmitting(true);
       await axios.post(API_ENDPOINTS.postAttendance, formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -198,6 +204,7 @@ function AttendancePage() {
       setImage(null);
       setCompressedBlob(null);
       setLocation("");
+      setDetectedOffice(null);
   setComment('');
       stopCamera();
       fetchAttendance();
@@ -584,6 +591,14 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                       <p>
                         <span className="font-medium">Location:</span>{" "}
                         {location}
+                      </p>
+                    )}
+                    {detectedOffice && (
+                      <p>
+                        <span className="font-medium">Office:</span>{" "}
+                        <span className={detectedOffice.isInOffice ? "text-green-600 font-semibold" : "text-amber-600"}>
+                          {detectedOffice.officeName}
+                        </span>
                       </p>
                     )}
                   </div>

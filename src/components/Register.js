@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '../utils/api';
+import { BRANCH_OPTIONS } from '../utils/branches';
 import {
   FiUser, FiMail, FiLock, FiBriefcase, FiHome, FiCalendar, FiPhone, FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
@@ -14,6 +15,7 @@ export default function RegisterMultiStep() {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     position: '',
     company: '',
@@ -26,7 +28,8 @@ export default function RegisterMultiStep() {
     profilePic: '',
     bloodGroup: '',
     address: '',
-  dateOfBirth: '',
+    branch: '',
+    dateOfBirth: '',
 
     // bank details
     bankDetails: {
@@ -78,8 +81,8 @@ export default function RegisterMultiStep() {
   const validateStep = () => {
     // Basic validation per-step
     if (step === 1) {
-      const { name, email, password, phone } = formData;
-      if (!name || !email || !password || !phone) return 'Please fill personal details (name, email, password, phone)';
+      const { name, email, password, phone, branch } = formData;
+      if (!name || !email || !password || !phone || !branch) return 'Please fill personal details (name, email, password, phone, branch)';
       if (formData.password !== formData.confirmPassword) {
   return 'Passwords do not match';
 }
@@ -120,14 +123,20 @@ export default function RegisterMultiStep() {
         position: formData.position,
         company: formData.company,
         salary: formData.salary ? Number(formData.salary) : 0,
-        department: formData.department,
+        department: formData.department || formData.branch || '',
         qualification: formData.qualification,
         dateOfJoining: formData.dateOfJoining || undefined,
         dateOfBirth: formData.dateOfBirth || undefined,
+        bloodGroup: formData.bloodGroup,
+        address: formData.address,
+        branch: formData.branch,
         rolesAndResponsibility: formData.rolesAndResponsibility ? formData.rolesAndResponsibility.split(',').map(s => s.trim()).filter(Boolean) : [],
         skills: formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
         profilePic: formData.profilePic,
-        bankDetails: formData.bankDetails,
+        bankDetails: {
+          ...formData.bankDetails,
+          officeBranch: formData.branch,
+        },
         schedule: formData.schedule
       };
 
@@ -233,6 +242,24 @@ function PersonalDetails({ formData, handleChange, showPassword, setShowPassword
         onChange={handleChange}
       />
 
+      <div className="max-w-xs">
+        <label className="block text-sm font-medium text-[#2c2e3e] mb-1 flex items-center">
+          <FiHome className="mr-2 text-[#6ca8a4]" /> Branch *
+        </label>
+        <select
+          name="branch"
+          value={formData.branch}
+          onChange={handleChange}
+          required
+          className="block w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 bg-white"
+        >
+          <option value="">Select branch</option>
+          {BRANCH_OPTIONS.map((b) => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
+      </div>
+
       <Input
         label="Address"
         name="address"
@@ -325,6 +352,7 @@ function Review({ formData }) {
         <Stat label="Name" value={formData.name} />
         <Stat label="Email" value={formData.email} />
         <Stat label="Phone" value={formData.phone} />
+        <Stat label="Branch" value={formData.branch || '-'} />
         <Stat label="Blood Group" value={formData.bloodGroup || '-'} />
         <Stat label="Address" value={formData.address || '-'} />
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
 import {
@@ -19,11 +19,10 @@ import {
 } from '@mui/material';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import letterheadUrl from '../../assets/letterhead.pdf';
-
-// NOTE: Requires installation of `pdf-lib` in the client project:
-// npm install pdf-lib
-
 import Swal from 'sweetalert2';
+import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
+
+const SIGN_OFF_TOP = 212;
 
 const OfferLetters = () => {
   const [candidates, setCandidates] = useState([]);
@@ -41,40 +40,35 @@ const OfferLetters = () => {
     probationPeriod: '',
     workingHours: '',
     workLocation: '',
-    noticePeriod: ''
+    noticePeriod: '',
+    founderName: 'Sivagaminathan',
   });
   const [titleText, setTitleText] = useState('OFFER LETTER');
-  // store date as yyyy-mm-dd for the date input; default to today
   const [letterDate, setLetterDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [body, setBody] = useState(`To,
 {{name}},
 {{addressLine1}},
 {{addressLine2}}.
 
-**Subject: Offer of Employment – {{designation}}**
+**Subject: Offer Letter for {{designation}} Position**
 
 **Dear {{name}},**
 
-We are pleased to offer you the position of **{{designation}}** at **{{company}}**. After careful evaluation of your skills, experience, and interview performance, we believe you will be a valuable addition to our organization.
+Ungalukku **{{company}}** la **{{designation}}** role-ku offer kudukkirathil romba sandhosham. Ungaloda skills, experience, interview performance ellam paathu, neenga namma team-ku nalla value add pannuveenga-nu nambrom.
 
-Your employment with **{{company}}** will commence on **{{joiningDate}}**, and you will be expected to report to the management or your assigned reporting authority on the same day. As part of this role, you will receive a annual salary of **{{salary}}**, along with other benefits and terms as applicable under company policy.
+Ungal employment **{{joiningDate}}** la start aagum. Andha naal la management/reporting authority kitta report panna vendum. Indha role-kku annual salary **{{salary}}** kudukkappadum, adoda company policy prakaram vera benefits-um apply aagum.
 
-Your roles and responsibilities will be explained to you in detail by your reporting manager, and you are expected to perform your duties with dedication, professionalism, and integrity. You are also required to comply with all company policies, rules, and regulations as may be amended from time to time.
+Ungal roles and responsibilities-ah reporting manager detail-a explain pannuvanga. Neenga dedication-oda, professionalism-oda, integrity-oda work panna vendum. Company policies, rules, regulations ellathayum follow panna vendum.
 
-This offer of employment is subject to the successful verification of the documents and credentials provided by you during the hiring process.
+Indha offer, neenga hiring process la submit panna documents and credentials successful verification-ku subject a irukkum.
 
-During your employment with **{{company}}**, you are expected to maintain strict confidentiality regarding company information, internal processes, and client-related data. Any breach of confidentiality or professional conduct may lead to disciplinary action, including termination of employment.
+Neenga **{{company}}** la work pannum time la, company information, internal process, client data pathi strict confidentiality maintain panna vendum. Confidentiality/professional conduct breach nadantha disciplinary action, including termination, edukka mudiyum.
 
-Please confirm your acceptance of this offer by signing and returning a copy of this letter or by providing written confirmation via email on or before your joining date.
+Indha offer-ai accept panringa-na, signed copy return pannunga illa email moolama joining date-ku munadi confirm pannunga.
 
-We look forward to welcoming you to **{{company}}** and wish you a successful and rewarding professional journey with us.
+Nanga ungala **{{company}}** family-ku welcome panradhukku eager-a irukkom. Ungal career journey successful-a irukka vaalthukkal.
 
-If you have any questions regarding this offer, please feel free to reach out to the HR department.
-
-Warm regards,  
-**HR Team**  
-**{{company}}**
-`);
+Doubts irundha Founder-ah reach pannunga.`);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -104,20 +98,21 @@ Warm regards,
     if (!selected) return;
     const cand = candidates.find(c => c._id === selected);
     if (cand) {
-      setForm({
+      setForm(prev => ({
+        ...prev,
         candidateName: cand.name || '',
         designation: cand.position || '',
         company: cand.company || '',
         salary: cand.salary || '',
         addressLine1: cand.addressLine1 || cand.address?.line1 || cand.address?.addressLine1 || cand.location || '',
         addressLine2: cand.addressLine2 || cand.address?.line2 || cand.address?.addressLine2 || cand.city || '',
-        joiningDate: cand.dateOfJoining ? cand.dateOfJoining.slice(0,10) : '',
+        joiningDate: cand.dateOfJoining ? cand.dateOfJoining.slice(0, 10) : '',
         email: cand.email || '',
         probationPeriod: cand.probationPeriod || '',
         workingHours: cand.workingHours || '',
         workLocation: cand.workLocation || '',
-        noticePeriod: cand.noticePeriod || ''
-      });
+        noticePeriod: cand.noticePeriod || '',
+      }));
     }
   }, [selected, candidates]);
 
@@ -129,27 +124,53 @@ Warm regards,
     setSignatureFile(file);
     setSignaturePreview(URL.createObjectURL(file));
     const reader = new FileReader();
-    reader.onload = () => {
-      const arrayBuffer = reader.result;
-      setSignatureBytes(arrayBuffer);
-    };
+    reader.onload = () => setSignatureBytes(reader.result);
     reader.readAsArrayBuffer(file);
   };
 
+  const formatJoiningDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(`${dateStr}T12:00:00`);
+      if (Number.isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const sanitizeBoldMarkers = (text) => {
+    let out = text.replace(/\*\*([^*]*)\*\*/g, (_, inner) => {
+      const trimmed = inner.trim();
+      if (!trimmed) return '';
+      const stripped = trimmed.replace(/[,.\s]/g, '');
+      if (!stripped || /^Dear$/i.test(stripped)) {
+        return trimmed.toLowerCase().startsWith('dear') ? 'Dear,' : '';
+      }
+      return `**${trimmed}**`;
+    });
+    out = out.replace(/\*\*/g, '');
+    return out;
+  };
+
+  const normalizeLetterLines = (text) =>
+    text
+      .split('\n')
+      .map((line) => line.replace(/,\s*$/, '').trimEnd())
+      .filter((line) => {
+        const t = line.trim();
+        return t !== '' && t !== ',' && t !== '.';
+      })
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n');
+
   const replacePlaceholders = (template, data) => {
-    return template.replace(/{{\s*name\s*}}/gi, data.candidateName || '')
+    const replaced = template
+      .replace(/{{\s*name\s*}}/gi, data.candidateName || '')
       .replace(/{{\s*designation\s*}}/gi, data.designation || '')
       .replace(/{{\s*company\s*}}/gi, data.company || '')
       .replace(/{{\s*salary\s*}}/gi, data.salary || '')
-      .replace(/{{\s*joiningDate\s*}}/gi, data.joiningDate
-        ? (() => {
-            try {
-              return new Date(data.joiningDate).toISOString().slice(0, 10);
-            } catch {
-              return data.joiningDate;
-            }
-          })()
-        : '')
+      .replace(/{{\s*joiningDate\s*}}/gi, data.joiningDate ? formatJoiningDate(data.joiningDate) : '')
       .replace(/{{\s*probationPeriod\s*}}/gi, data.probationPeriod || '')
       .replace(/{{\s*workingHours\s*}}/gi, data.workingHours || '')
       .replace(/{{\s*workLocation\s*}}/gi, data.workLocation || '')
@@ -157,9 +178,53 @@ Warm regards,
       .replace(/{{\s*addressLine1\s*}}/gi, data.addressLine1 || '')
       .replace(/{{\s*addressLine2\s*}}/gi, data.addressLine2 || '');
 
+    return normalizeLetterLines(sanitizeBoldMarkers(replaced));
+  };
+
+  const drawSignOffBlock = async (page, pdfDoc, fontRegular, fontBold, fontSize) => {
+    const x = 40;
+    const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);
+    const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
+    const founderName = form.founderName?.trim() || 'Sivagaminathan';
+
+    page.drawText('Warm regards,', { x, y: 200, size: fontSize, font: fontRegular, color: bodyColor });
+    page.drawText('Founder', { x, y: 184, size: fontSize, font: fontRegular, color: bodyColor });
+    page.drawText(founderName, { x, y: 168, size: fontSize, font: fontBold, color: titleColor });
+
+    if (signatureBytes && signatureFile) {
+      try {
+        const sigUint8 = new Uint8Array(signatureBytes);
+        const embeddedSig = (signatureFile.type || '').includes('png')
+          ? await pdfDoc.embedPng(sigUint8)
+          : await pdfDoc.embedJpg(sigUint8);
+
+        const maxSigWidth = 150;
+        const maxSigHeight = 56;
+        const scale = Math.min(1, maxSigWidth / (embeddedSig.width || 1), maxSigHeight / (embeddedSig.height || 1));
+        const sigDims = embeddedSig.scale(scale);
+
+        page.drawImage(embeddedSig, {
+          x,
+          y: 118,
+          width: sigDims.width,
+          height: sigDims.height,
+        });
+      } catch (sigErr) {
+        console.error('Signature embed error', sigErr);
+      }
+    }
   };
 
   const generatePdf = async () => {
+    if (!form.candidateName?.trim() || !form.company?.trim() || !form.designation?.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing details',
+        text: 'Select a candidate and ensure name, company, and designation are filled before generating.',
+      });
+      return;
+    }
+
     setGenerating(true);
     try {
       const resp = await fetch(letterheadUrl);
@@ -171,12 +236,11 @@ Warm regards,
       const page = pdfDoc.getPage(0);
       const { width, height } = page.getSize();
 
-      const margins = { top: 132, bottom: 68, left: 40, right: 50 };
+      const margins = { top: 132, left: 40, right: 50 };
       const contentTop = height - margins.top;
       const contentWidth = width - margins.left - margins.right;
-      const sigReserve = signatureBytes ? 52 : 0;
       const headerBlockHeight = 42;
-      const maxBodyHeight = contentTop - margins.bottom - headerBlockHeight - sigReserve;
+      const maxBodyHeight = contentTop - SIGN_OFF_TOP - headerBlockHeight;
 
       const finalBody = replacePlaceholders(body, form);
       const sourceLines = finalBody.split('\n');
@@ -185,7 +249,7 @@ Warm regards,
       let fontBold = fontRegular;
       try {
         fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-      } catch (e) {
+      } catch {
         fontBold = fontRegular;
       }
 
@@ -281,7 +345,7 @@ Warm regards,
         dateStr = letterDate
           ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
           : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      } catch (e) {
+      } catch {
         dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       }
 
@@ -301,6 +365,7 @@ Warm regards,
       let cursorY = titleY - 10;
 
       for (const vl of visualLines) {
+        if (cursorY < SIGN_OFF_TOP) break;
         if (vl.isParagraphBreak) {
           cursorY -= paragraphGap;
           continue;
@@ -329,58 +394,43 @@ Warm regards,
         cursorY -= lineHeight;
       }
 
-      if (signatureBytes && signatureFile) {
-        try {
-          const sigUint8 = new Uint8Array(signatureBytes);
-          const embeddedSig = (signatureFile.type || '').includes('png')
-            ? await pdfDoc.embedPng(sigUint8)
-            : await pdfDoc.embedJpg(sigUint8);
-
-          const maxSigWidth = 120;
-          const maxSigHeight = 48;
-          const scale = Math.min(1, maxSigWidth / (embeddedSig.width || 1), maxSigHeight / (embeddedSig.height || 1));
-          const sigDims = embeddedSig.scale(scale);
-          const sigY = Math.max(margins.bottom + 8, cursorY - sigDims.height - 6);
-
-          page.drawImage(embeddedSig, {
-            x: margins.left,
-            y: sigY,
-            width: sigDims.width,
-            height: sigDims.height
-          });
-        } catch (sigErr) {
-          console.error('Signature embed error', sigErr);
-        }
-      }
+      await drawSignOffBlock(page, pdfDoc, fontRegular, fontBold, fontSize);
+      await shrinkLetterheadPhoneIconOnAllPages(pdfDoc);
 
       const pdfBytes = await pdfDoc.save();
-  // keep bytes for upload
-  setPdfBytesData(pdfBytes);
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  setPdfUrl(url);
-      } catch (err) {
-        console.error('PDF generation error', err);
-        Swal.fire({ icon: 'error', title: 'Failed', text: 'Failed to generate PDF. See console for details.' });
-      } finally {
-        setGenerating(false);
-      }
+      setPdfBytesData(pdfBytes);
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      setPdfUrl(URL.createObjectURL(blob));
+    } catch (err) {
+      console.error('PDF generation error', err);
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Failed to generate PDF. See console for details.' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const printPdf = () => {
+    if (!pdfUrl) return;
+    const win = window.open(pdfUrl, '_blank');
+    if (win) {
+      win.addEventListener('load', () => {
+        win.focus();
+        win.print();
+      });
+    }
   };
 
   const downloadPdf = () => {
     if (!pdfUrl) return;
-    // upload to server/cloudinary (if we have bytes and a selected candidate)
     const uploadAndDownload = async () => {
       try {
         if (pdfBytesData) {
-          // upload using helper
           const { uploadLetterBytes } = await import('../../utils/uploadLetter');
           await uploadLetterBytes(pdfBytesData, `${form.candidateName || 'offer-letter'}.pdf`, selected || undefined);
           Swal.fire({ icon: 'success', title: 'Saved', text: 'Letter uploaded to cloud', timer: 1300, showConfirmButton: false });
         }
       } catch (err) {
         console.error('Upload failed', err);
-        // still allow download even if upload fails
         Swal.fire({ icon: 'warning', title: 'Upload failed', text: 'Letter could not be uploaded to cloud. Download will continue.' });
       } finally {
         const a = document.createElement('a');
@@ -430,6 +480,14 @@ Warm regards,
             <TextField label="Notice Period (days)" fullWidth sx={{ mb: 2 }} value={form.noticePeriod} onChange={(e) => handleChange('noticePeriod', e.target.value)} />
 
             <TextField
+              label="Founder Name"
+              fullWidth
+              sx={{ mb: 2 }}
+              value={form.founderName}
+              onChange={(e) => handleChange('founderName', e.target.value)}
+            />
+
+            <TextField
               label="Title"
               fullWidth
               sx={{ mb: 2 }}
@@ -467,12 +525,15 @@ Warm regards,
               )}
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
               <Button variant="contained" onClick={generatePdf} disabled={generating}>{generating ? 'Generating...' : 'Generate Preview'}</Button>
               <Button variant="outlined" onClick={downloadPdf} disabled={!pdfUrl}>Download PDF</Button>
+              <Button variant="outlined" onClick={printPdf} disabled={!pdfUrl}>Print</Button>
             </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Print panna &quot;Print&quot; button use pannunga — browser Ctrl+P preview maathram print aagum.
+            </Typography>
 
-            {/* Uploaded letter copies for selected candidate */}
             {selected && (candidates.find(c => c._id === selected)?.letterCopies || []).length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle1" sx={{ mb: 1 }}>Uploaded copies</Typography>

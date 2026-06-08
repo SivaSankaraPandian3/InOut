@@ -19,9 +19,11 @@ import {
 } from 'lucide-react';
 import urbancodeLogoSrc from '../../../assets/uclogo.png';
 import jobzenterLogoSrc from '../../../assets/jzlogo.png';
-import { getUserWorks } from '../../../utils/userWorks';
+import { getUserWorks, normalizeStringList } from '../../../utils/userWorks';
+import { getUserBranch, branchBadgeClass } from '../../../utils/branches';
+import './user-profile.css';
 
-const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose }) => {
+const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose, showCloseButton = true }) => {
   const [showBankingDetails, setShowBankingDetails] = useState(false);
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [isExpanded, setIsExpanded] = useState(!!forceExpanded);
@@ -53,6 +55,8 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
 
   const formattedBankingDetails = formatBankingDetails(user.bankDetails);
   const works = getUserWorks(user);
+  const skills = normalizeStringList(user.skills);
+  const roles = normalizeStringList(user.rolesAndResponsibility);
 
   if (!isExpanded) {
     return (
@@ -96,253 +100,232 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
     );
   }
 
-  return (
-    <div className={`relative w-full  hover:border-blue-200 mx-auto rounded-xl border bg-white p-4 shadow-lg group transition-all duration-300 hover:shadow-xl ${className}`}>
-      <button 
-        onClick={() => {
-          setIsExpanded(false);
-          if (onClose) onClose();
-        }}
-        className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100"
-      >
-        <X className="w-7 h-7 text-gray-500 bg-gray-200 rounded-full" />
-      </button>
-      
-     
+  const handleEditClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onEdit && user._id) onEdit(user._id);
+  };
 
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* Left Column - Big Profile Picture and Basic Info */}
-        <div className="w-full lg:w-1/3 flex flex-col items-center">
-          <div className="relative mb-6">
-            {user.profilePic ? (
-              <img
-                src={user.profilePic}
-                alt={`${user.name}'s avatar`}
-                className={`w-36 h-36 rounded-full object-cover shadow-md p-1`}
-              />
-            ) : (
-              <img
-                src={'https://www.pikpng.com/pngl/m/154-1540525_male-user-filled-icon-my-profile-icon-png.png'}
-                alt={`${user.name}'s avatar`}
-                className={`w-36 h-36 rounded-full object-cover shadow-md p-1`}
-              />
-            )}
+  return (
+    <div className={`uc-profile-card ${className}`}>
+      {showCloseButton && (
+        <button
+          type="button"
+          className="uc-profile-close"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onClose) onClose();
+            else setIsExpanded(false);
+          }}
+          aria-label="Close"
+        >
+          <X size={22} color="#6b7280" />
+        </button>
+      )}
+
+      <div className="uc-profile-layout">
+        <div className="uc-profile-sidebar">
+          <div className="uc-profile-avatar-wrap">
             <img
-              src={getCompanyLogo(user.company)}
-              alt={`${user.company} logo`}
-              className={`absolute -bottom-4 -right-4 w-14 h-14 ring-gray-200 rounded-full bg-white object-contain`}
+              src={
+                user.profilePic ||
+                'https://www.pikpng.com/pngl/m/154-1540525_male-user-filled-icon-my-profile-icon-png.png'
+              }
+              alt={`${user.name}'s avatar`}
+              className="uc-profile-avatar"
+            />
+            <img
+              src={getCompanyLogo(works[0]?.company || user.company)}
+              alt="Company logo"
+              className="uc-profile-company-logo"
             />
           </div>
 
-          <div className="w-full text-center space-y-3">
-            <div className="flex items-center justify-center gap-2">
-              <h3 className="text-3xl font-bold text-gray-900">{user.name}</h3>
-              
-            </div>
+          <h3 className="uc-profile-name">{user.name}</h3>
 
-            <div className="text-lg text-gray-700 font-medium">
-              {works[0]?.position || user.position}
-              {(works[0]?.company || user.company) && ` at ${works[0]?.company || user.company}`}
-              {works.length > 1 && (
-                <span className="block text-sm font-normal text-indigo-600 mt-1">
-                  +{works.length - 1} more work assignment{works.length > 2 ? 's' : ''}
-                </span>
-              )}
-            </div>
-
-            {user.skills.length>0 && (<div className="text-sm border px-3 py-1 rounded-full text-gray-500">
-              Skills
-            </div>)}
-
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {user.skills?.map((skill, i) => (
-                <span key={i} className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
-                  {skill}
-                </span>
-              ))}
-             
-            </div>
-          </div>
-          {onEdit && (
-            <button
-              onClick={() => onEdit(user._id)}
-              className="mt-8 border-2 text-sm text-gray-600 px-2 py-1 rounded-xl hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors font-medium"
+          {getUserBranch(user) && (
+            <span
+              className={branchBadgeClass(getUserBranch(user))}
+              style={{
+                display: 'inline-block',
+                marginTop: 8,
+                padding: '4px 10px',
+                borderRadius: 9999,
+                fontSize: '0.75rem',
+                fontWeight: 600,
+              }}
             >
-              <div className="flex items-center justify-center gap-3">
-                <Edit3 className="w-4 h-4" />
-                <span>Edit Profile</span>
+              {getUserBranch(user)}
+            </span>
+          )}
+
+          <p className="uc-profile-role">
+            {works[0]?.position || user.position || '—'}
+            {(works[0]?.company || user.company) && ` at ${works[0]?.company || user.company}`}
+            {works.length > 1 && (
+              <span style={{ display: 'block', fontSize: '0.875rem', color: '#4f46e5', marginTop: 4 }}>
+                +{works.length - 1} more work assignment{works.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </p>
+
+          {skills.length > 0 && (
+            <>
+              <div className="uc-profile-skills-label">Skills</div>
+              <div className="uc-profile-skills">
+                {skills.map((skill, i) => (
+                  <span key={`${skill}-${i}`} className="uc-profile-skill-chip">
+                    {skill}
+                  </span>
+                ))}
               </div>
+            </>
+          )}
+
+          {onEdit && (
+            <button type="button" className="uc-btn uc-btn-primary" style={{ marginTop: '1.5rem' }} onClick={handleEditClick}>
+              <Edit3 size={16} />
+              Edit Profile
             </button>
           )}
         </div>
 
-        {/* Right Column - Detailed Information */}
-        <div className="w-full lg:w-2/3 space-y-6">
-          {/* Personal Details Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Work Information */}
-            <div className="border rounded-xl p-5 bg-gray-50">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <Building className="w-5 h-5 text-blue-600" />
+        <div className="uc-profile-main">
+          <div className="uc-profile-grid-2">
+            <div className="uc-profile-section">
+              <h4>
+                <Building size={18} color="#2563eb" />
                 Work Information
                 {works.length > 1 && (
-                  <span className="text-xs font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                    {works.length} assignments
+                  <span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#4f46e5', marginLeft: 6 }}>
+                    ({works.length} assignments)
                   </span>
                 )}
               </h4>
-              <div className="space-y-3 text-gray-700">
+              <div>
                 {works.map((work, i) => (
-                  <div key={i} className={i > 0 ? 'pt-3 border-t border-gray-200' : ''}>
-                    {works.length > 1 && (
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                        {i === 0 ? 'Primary' : `Work ${i + 1}`}
-                      </div>
-                    )}
-                    <div className="flex items-start gap-3">
-                      <Building className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <div className="font-medium">{work.position || '—'}</div>
-                        <div className="text-sm text-gray-500">{work.company || '—'}</div>
-                        {work.department && (
-                          <div className="text-sm text-gray-500">{work.department}</div>
-                        )}
-                      </div>
+                  <div key={i} className="uc-profile-row" style={i > 0 ? { borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem' } : undefined}>
+                    <Building size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      {works.length > 1 && (
+                        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>
+                          {i === 0 ? 'Primary' : `Work ${i + 1}`}
+                        </div>
+                      )}
+                      <div style={{ fontWeight: 600 }}>{work.position || '—'}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{work.company || '—'}</div>
+                      {work.department && (
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{work.department}</div>
+                      )}
                     </div>
                   </div>
                 ))}
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                  <div className="flex flex-col">
-                    <span>Joined {formatDate(user.dateOfJoining)}</span>
-                    <span className="text-sm text-gray-500">{user.dateOfRelieving ? `Relieved ${formatDate(user.dateOfRelieving)}` : 'Currently working'}</span>
+                <div className="uc-profile-row">
+                  <Calendar size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <div>Joined {formatDate(user.dateOfJoining)}</div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      {user.dateOfRelieving ? `Relieved ${formatDate(user.dateOfRelieving)}` : 'Currently working'}
+                    </div>
                   </div>
                 </div>
                 {user.qualification && (
-                  <div className="flex items-start gap-3">
-                    <GraduationCap className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                  <div className="uc-profile-row">
+                    <GraduationCap size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
                     <span>{user.qualification}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Contact Information */}
-            <div className="border rounded-xl p-5 bg-gray-50">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
-                  Personal Details
-                </h4>
+            <div className="uc-profile-section">
+              <h4>
+                <User size={18} color="#2563eb" />
+                Personal Details
+              </h4>
+              <div className="uc-profile-row">
+                <Mail size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span style={{ wordBreak: 'break-all' }}>{user.email || '—'}</span>
               </div>
-              <div className="space-y-3 text-gray-700">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                  <span className="font-mono break-all">
-                    {user.email}
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Phone className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                  <span className="font-mono">
-                    {user.phone}
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Droplet className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                  <span className="font-mono">
-                    {user.bloodGroup||'N/A'}
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                  <span className="font-mono">
-                    {user.address|| 'N/A'}
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                  <span className="font-mono">DOB: {user.dateOfBirth ? formatDate(user.dateOfBirth) : 'N/A'}</span>
-                </div>
+              <div className="uc-profile-row">
+                <Phone size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>{user.phone || '—'}</span>
+              </div>
+              <div className="uc-profile-row">
+                <Droplet size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>{user.bloodGroup || 'N/A'}</span>
+              </div>
+              <div className="uc-profile-row">
+                <MapPin size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>{user.address || 'N/A'}</span>
+              </div>
+              <div className="uc-profile-row">
+                <Calendar size={18} color="#6b7280" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>DOB: {user.dateOfBirth ? formatDate(user.dateOfBirth) : 'N/A'}</span>
               </div>
             </div>
           </div>
 
-          {/* Roles and Responsibilities */}
-          {user.rolesAndResponsibility?.length > 0 && (
-            <div className="border rounded-xl p-5 bg-gray-50">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4">Roles & Responsibilities</h4>
-              <ul className="space-y-2 text-gray-700">
-                {user.rolesAndResponsibility.map((item, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full mt-2.5 flex-shrink-0" />
-                    <span>{item}</span>
-                  </li>
+          {roles.length > 0 && (
+            <div className="uc-profile-section">
+              <h4>Roles &amp; Responsibilities</h4>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#374151' }}>
+                {roles.map((item, i) => (
+                  <li key={`${item}-${i}`} style={{ marginBottom: '0.35rem' }}>{item}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Banking Details */}
           {formattedBankingDetails && (
-            <div className="border border-red-100 rounded-xl p-5 bg-red-50">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-red-600" />
+            <div className="uc-profile-section" style={{ background: '#fef2f2', borderColor: '#fecaca' }}>
+              <div className="uc-flex-between" style={{ marginBottom: '1rem' }}>
+                <h4 style={{ margin: 0 }}>
+                  <CreditCard size={18} color="#dc2626" />
                   Banking Details
                 </h4>
                 <button
+                  type="button"
+                  className="uc-btn uc-btn-outline"
+                  style={{ padding: '4px 8px' }}
                   onClick={() => setShowBankingDetails(!showBankingDetails)}
-                  className="h-8 w-8 p-1.5 rounded hover:bg-red-100 flex items-center justify-center"
                 >
-                  {showBankingDetails ? (
-                    <EyeOff className="w-5 h-5 text-red-600" />
-                  ) : (
-                    <Eye className="w-5 h-5 text-red-600" />
-                  )}
+                  {showBankingDetails ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
+              <div className="uc-profile-grid-2">
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">Bank Name</div>
-                  <div className="font-medium">{formattedBankingDetails.bankName || 'Not provided'}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Bank Name</div>
+                  <div style={{ fontWeight: 500 }}>{formattedBankingDetails.bankName || 'Not provided'}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">Account Number</div>
-                  <div className="font-mono">{formattedBankingDetails.accountNumber || 'Not provided'}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Account Number</div>
+                  <div style={{ fontFamily: 'monospace' }}>{formattedBankingDetails.accountNumber || 'Not provided'}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">IFSC Code</div>
-                  <div className="font-mono">{formattedBankingDetails.ifscCode || 'Not provided'}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>IFSC Code</div>
+                  <div style={{ fontFamily: 'monospace' }}>{formattedBankingDetails.ifscCode || 'Not provided'}</div>
                 </div>
                 {formattedBankingDetails.upiId && (
                   <div>
-                    <div className="text-sm text-gray-500 mb-1">UPI ID</div>
-                    <div className="font-mono break-all">{formattedBankingDetails.upiId}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>UPI ID</div>
+                    <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{formattedBankingDetails.upiId}</div>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* Admin Comments (internal) */}
           {user.adminComments && user.adminComments.trim() !== '' && (
-            <div className="border rounded-xl p-5 bg-yellow-50">
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">Admin Comments</h4>
-              <div className="text-gray-700 whitespace-pre-wrap">{user.adminComments}</div>
+            <div className="uc-profile-section" style={{ background: '#fefce8', borderColor: '#fde047' }}>
+              <h4>Admin Comments</h4>
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151' }}>{user.adminComments}</div>
             </div>
           )}
 
-          {/* Footer with timestamps */}
-          <div className="flex flex-col sm:flex-row justify-between text-sm text-gray-500 pt-4 border-t">
-            <div>
-              <span className="font-medium">Account Created: </span>
-              <span>{formatDate(user.createdAt)}</span>
-            </div>
-            <div>
-              <span className="font-medium">Last Updated: </span>
-              <span>{formatDate(user.updatedAt)}</span>
-            </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+            <span><strong>Account Created:</strong> {formatDate(user.createdAt)}</span>
+            <span><strong>Last Updated:</strong> {formatDate(user.updatedAt)}</span>
           </div>
         </div>
       </div>

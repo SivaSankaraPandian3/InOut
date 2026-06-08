@@ -1,0 +1,147 @@
+import { getPrimaryWork, getUserWorks, withSyncedWorks } from './userWorks';
+
+export const BRANCH_OPTIONS = ['Chennai Pallikarani', 'Chennai Velachery', 'Tirunelveli'];
+
+/** Read branch from API user (top-level, works, or bankDetails.officeBranch). */
+export const extractBranchFromUser = (user) => {
+  if (!user) return '';
+  return (
+    normalizeBranchValue(user.branch) ||
+    normalizeBranchValue(getUserWorks(user)[0]?.branch) ||
+    normalizeBranchValue(user.bankDetails?.officeBranch) ||
+    ''
+  );
+};
+
+/** Whitelisted PUT body — ensures branch is sent in fields the API may persist. */
+export const buildUserUpdatePayload = (form) => {
+  const synced = withSyncedWorks(form, normalizeBranchValue(form.branch));
+  const branch = extractBranchFromUser(synced) || normalizeBranchValue(form.branch) || '';
+
+  return {
+    name: synced.name || '',
+    email: synced.email || '',
+    phone: synced.phone || '',
+    company: synced.company || '',
+    department: synced.department || '',
+    position: synced.position || '',
+    salary:
+      synced.salary === '' || synced.salary === null || synced.salary === undefined
+        ? 0
+        : Number(synced.salary),
+    qualification: synced.qualification || '',
+    dateOfJoining: synced.dateOfJoining || undefined,
+    dateOfRelieving: synced.dateOfRelieving || null,
+    dateOfBirth: synced.dateOfBirth || undefined,
+    profilePic: synced.profilePic || '',
+    skills: Array.isArray(synced.skills) ? synced.skills : [],
+    rolesAndResponsibility: Array.isArray(synced.rolesAndResponsibility)
+      ? synced.rolesAndResponsibility
+      : [],
+    works: (synced.works || []).map((w) => ({
+      company: w.company || '',
+      department: w.department || '',
+      position: w.position || '',
+      branch: branch || normalizeBranchValue(w.branch) || '',
+    })),
+    branch,
+    bankDetails: {
+      bankingName: synced.bankDetails?.bankingName || '',
+      bankAccountNumber: synced.bankDetails?.bankAccountNumber || '',
+      ifscCode: synced.bankDetails?.ifscCode || '',
+      upiId: synced.bankDetails?.upiId || '',
+      officeBranch: branch,
+    },
+    isActive: synced.isActive !== false,
+    adminComments: synced.adminComments || '',
+    employeeId: synced.employeeId || '',
+  };
+};
+
+/** Chennai: Velechery + Pallikaranai. Tirunelveli: Fab Sapphire Towers (S Bypass Rd). */
+export const isPhysicalOfficePresent = (officeName) => {
+  if (!officeName) return false;
+  const o = String(officeName).toLowerCase();
+  return (
+    o.includes('velechery') ||
+    o.includes('pallikaranai') ||
+    o.includes('tirunelveli') ||
+    o.includes('tvl')
+  );
+};
+
+export const normalizeBranchValue = (value) => {
+  if (!value) return '';
+  const lower = String(value).trim().toLowerCase();
+  if (lower.includes('tirunel') || lower === 'tvl') return 'Tirunelveli';
+  if (lower.includes('pallikar')) return 'Chennai Pallikarani';
+  if (lower.includes('velach') || lower.includes('velech') || lower === 'velachery') return 'Chennai Velachery';
+  if (lower === 'chennai') return 'Chennai Pallikarani';
+  if (BRANCH_OPTIONS.some((b) => b.toLowerCase() === lower)) {
+    return BRANCH_OPTIONS.find((b) => b.toLowerCase() === lower);
+  }
+  return '';
+};
+
+/** Branch on user profile; falls back to department text for older records. */
+export const getUserBranch = (user) => {
+  if (!user || typeof user !== 'object') return '';
+  const fromField =
+    normalizeBranchValue(user.branch) ||
+    normalizeBranchValue(user.works?.[0]?.branch) ||
+    normalizeBranchValue(user.bankDetails?.officeBranch);
+  if (fromField) return fromField;
+
+  const dept = (
+    user.department ||
+    getPrimaryWork(user).department ||
+    ''
+  ).toLowerCase();
+  if (dept.includes('tirunel')) return 'Tirunelveli';
+  if (dept.includes('pallikar')) return 'Chennai Pallikarani';
+  if (dept.includes('velach') || dept.includes('velech')) return 'Chennai Velachery';
+  if (dept.includes('chennai')) return 'Chennai Pallikarani';
+  return '';
+};
+
+export const matchesBranchFilter = (user, filterBranch) => {
+  if (!filterBranch || filterBranch === 'All') return true;
+  return getUserBranch(user) === filterBranch;
+};
+
+export const branchBadgeClass = (branch) => {
+  if (branch === 'Chennai Pallikarani') return 'bg-green-100 text-green-800';
+  if (branch === 'Chennai Velachery') return 'bg-blue-100 text-blue-800';
+  if (branch === 'Tirunelveli') return 'bg-amber-100 text-amber-900';
+  return 'bg-gray-100 text-gray-600';
+};
+
+export const findUserForAttendanceLog = (log, allUsers = []) => {
+  if (!log) return null;
+  const uid = log.userId ?? log.user?._id ?? log.user?.id;
+  if (uid) {
+    const byId = allUsers.find((u) => String(u._id) === String(uid));
+    if (byId) return byId;
+  }
+  const name = (log.employeeName || log.user?.name || '').trim().toLowerCase();
+  if (!name) return null;
+  return allUsers.find((u) => (u.name || '').trim().toLowerCase() === name) || null;
+};
+
+export const logMatchesBranchFilter = (log, allUsers, filterBranch) => {
+  if (!filterBranch || filterBranch === 'All') return true;
+  const user = findUserForAttendanceLog(log, allUsers);
+  return matchesBranchFilter(user, filterBranch);
+};
+
+export const officePresentBadgeClass = (officeName) => {
+  if (!officeName) return 'text-red-600';
+  const o = String(officeName).toLowerCase();
+  if (o.includes('pallikaranai')) return 'px-2 py-1 rounded-full text-white bg-green-500 text-xs';
+  if (o.includes('velechery')) return 'px-2 py-1 rounded-full text-white bg-blue-500 text-xs';
+  if (o.includes('tirunelveli') || o.includes('tvl')) {
+    return 'px-2 py-1 rounded-full text-white bg-amber-600 text-xs';
+  }
+  if (isPhysicalOfficePresent(officeName)) return 'px-2 py-1 rounded-full text-white bg-green-500 text-xs';
+  return 'text-red-600';
+};

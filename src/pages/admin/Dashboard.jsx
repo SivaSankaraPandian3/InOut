@@ -8,6 +8,8 @@ import { FiSearch, FiCalendar } from 'react-icons/fi';
 import AbsentUsersList from '../../components/admin-dashboard/dashboard/AbsentUsersList';
 import ReportGenerator from '../../components/admin-dashboard/dashboard/ReportGenerator';
 import { Sync } from '@mui/icons-material';
+import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
+
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -19,9 +21,10 @@ const Dashboard = () => {
   const today = new Date();
   return today.toISOString().split('T')[0]; // Format: 'YYYY-MM-DD'
 });
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [locationFilter, setLocationFilter] = useState('all');
-  const [companyFilter, setCompanyFilter] = useState('all');
+  const [typeFilter] = useState('all');
+  const [locationFilter] = useState('all');
+  const [companyFilter] = useState('all');
+  const [filterBranch, setFilterBranch] = useState('All');
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem('token');
@@ -43,7 +46,6 @@ const Dashboard = () => {
     const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
 
     if (cached && cachedTime && (Date.now() - cachedTime < CACHE_TTL)) {
-      console.log("⚡ Using dashboard cached data");
       const data = JSON.parse(cached);
 
       setSummary(data.summary);
@@ -57,11 +59,10 @@ const Dashboard = () => {
 
     // 2️⃣ No cache → Fetch fresh
     try {
-      console.log("⏳ Fetching fresh dashboard data...");
       const [summaryRes, logsRes, usersRes] = await Promise.all([
         axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
         axios.get(API_ENDPOINTS.getRecentDashboardLogs, { headers }),
-        axios.get(API_ENDPOINTS.getAllUsers, { headers })
+        axios.get(API_ENDPOINTS.getUsers, { headers })
       ]);
 
       const summary = summaryRes.data || {};
@@ -123,85 +124,86 @@ const Dashboard = () => {
       result = result.filter(log => log.company === companyFilter);
     }
 
+    if (filterBranch !== 'All') {
+      result = result.filter((log) => logMatchesBranchFilter(log, allUsers, filterBranch));
+    }
+
     setFilteredLogs(result);
     
-  }, [logs, search, dateFilter, typeFilter]);
+  }, [logs, search, dateFilter, typeFilter, locationFilter, companyFilter, filterBranch, allUsers]);
   const logsForSelectedDate = logs.filter(log =>
   new Date(log.timestamp).toDateString() === new Date(dateFilter).toDateString()
 );
 
+  const usersForBranch =
+    filterBranch === 'All'
+      ? allUsers
+      : allUsers.filter((u) => matchesBranchFilter(u, filterBranch));
+
   if (loading) return <Loader />;
-  console.log("FL,L",filteredLogs,logs);
 
   return (
-    <div className="sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-      <h1 className="text-2xl font-bold text-gray-600">Today's Attendance Report</h1>
-    <ReportGenerator
-          logs={filteredLogs} 
-  allUsers={allUsers} 
-  selectedDate={dateFilter}
-        /></div>
-      {/* Summary Cards */}
+    <div className="uc-page">
+      <div className="uc-flex-between">
+        <h1 className="uc-page-title">Today&apos;s Attendance Report</h1>
+        <ReportGenerator
+          logs={filteredLogs}
+          allUsers={allUsers}
+          selectedDate={dateFilter}
+        />
+      </div>
+
       {summary && <DashboardCards data={summary} />}
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10 mb-6">
-        {/* Search */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiSearch className="text-gray-400" />
-          </div>
+      <div className="uc-grid-filters">
+        <div className="uc-field">
+          <span className="uc-field-icon"><FiSearch /></span>
           <input
             type="text"
             placeholder="Search employees..."
-            className="pl-10 w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="uc-input uc-input-icon"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {/* Date Filter */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiCalendar className="text-gray-400" />
-          </div>
+        <div className="uc-field">
+          <span className="uc-field-icon"><FiCalendar /></span>
           <input
             type="date"
-            className="pl-10 w-full border p-2 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+            className="uc-input uc-input-icon"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
           />
         </div>
 
-        {/* Type Filter */}
-        {/* <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        <select
+          value={filterBranch}
+          onChange={(e) => setFilterBranch(e.target.value)}
+          className="uc-select"
         >
-          <option value="all">All Types</option>
-          <option value="check-in">Check In</option>
-          <option value="check-out">Check Out</option>
-        </select> */}
-        <button className=" bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={() => {
-  localStorage.removeItem("dashboard_cache");
-  localStorage.removeItem("dashboard_cache_time");
-  window.location.reload();
-}}><Sync />
-  Refresh Data
-  
-</button>
+          <option value="All">All Branches</option>
+          {BRANCH_OPTIONS.map((b) => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          className="uc-btn uc-btn-primary"
+          onClick={() => {
+            localStorage.removeItem('dashboard_cache');
+            localStorage.removeItem('dashboard_cache_time');
+            window.location.reload();
+          }}
+        >
+          <Sync fontSize="small" />
+          Refresh Data
+        </button>
       </div>
 
-      {/* Attendance Table */}
-      <div className="overflow-x-auto">
-        
       <RecentAttendanceTable logs={filteredLogs} />
-      
-
-      
-     <AbsentUsersList allUsers={allUsers} logs={logsForSelectedDate} /></div>
+      <AbsentUsersList allUsers={usersForBranch} logs={logsForSelectedDate} />
     </div>
   );
 };

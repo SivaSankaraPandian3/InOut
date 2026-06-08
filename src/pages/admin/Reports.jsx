@@ -57,6 +57,12 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import Loader from "../../components/admin-dashboard/common/Loader";
 import { getPrimaryWork } from "../../utils/userWorks";
+import {
+  BRANCH_OPTIONS,
+  isPhysicalOfficePresent,
+  getUserBranch,
+  matchesBranchFilter,
+} from "../../utils/branches";
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -229,26 +235,37 @@ const isActiveEmployee = (user) => {
   return true;
 };
 
-const employeeIsActive = (displayName, schedules, allUsers, logs) => {
+const findUserForEmployee = (displayName, schedules, allUsers, logs) => {
   const { resolvedUserId, schedule } = resolveEmployeeContext(displayName, schedules, allUsers, logs);
 
   const byId =
     resolvedUserId &&
     allUsers.find((u) => String(u._id) === String(resolvedUserId));
-  if (byId) return isActiveEmployee(byId);
+  if (byId) return byId;
 
   const byName = allUsers.find(
     (u) => normalizeName(u.name) === normalizeName(displayName)
   );
-  if (byName) return isActiveEmployee(byName);
+  if (byName) return byName;
 
   let schUser = schedule?.user;
   if (typeof schUser === 'string') {
     schUser = allUsers.find((u) => String(u._id) === String(schUser));
   }
-  if (schUser && typeof schUser === 'object') return isActiveEmployee(schUser);
+  if (schUser && typeof schUser === 'object') return schUser;
 
-  return false;
+  return null;
+};
+
+const employeeIsActive = (displayName, schedules, allUsers, logs) => {
+  const user = findUserForEmployee(displayName, schedules, allUsers, logs);
+  return user ? isActiveEmployee(user) : false;
+};
+
+const employeeMatchesBranch = (displayName, schedules, allUsers, logs, filterBranch) => {
+  if (!filterBranch || filterBranch === 'All') return true;
+  const user = findUserForEmployee(displayName, schedules, allUsers, logs);
+  return user ? matchesBranchFilter(user, filterBranch) : false;
 };
 
 
@@ -335,6 +352,7 @@ const Report = () => {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterBranch, setFilterBranch] = useState("All");
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -437,9 +455,10 @@ const Report = () => {
     });
     return [...names]
       .filter((employee) => employeeIsActive(employee, schedules, allUsers, logs))
+      .filter((employee) => employeeMatchesBranch(employee, schedules, allUsers, logs, filterBranch))
       .filter((employee) => employee.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => a.localeCompare(b));
-  }, [logs, schedules, allUsers, searchTerm]);
+  }, [logs, schedules, allUsers, searchTerm, filterBranch]);
   const monthYearLabel = selectedMonth.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -518,14 +537,12 @@ const Report = () => {
         } else if (approvedLeave) {
           status = `Leave (${approvedLeave.leaveType || 'Approved'})`;
         } else if (scheduled?.isLeave && checkIn) {
-          const officeName = checkIn.officeName?.toLowerCase() || '';
-          const presentType = (!officeName.includes("velechery") && !officeName.includes("pallikaranai")) ? 'WFH' : 'Present';
+          const presentType = isPhysicalOfficePresent(checkIn.officeName) ? 'Present' : 'WFH';
           status = `${presentType} (Scheduled Leave)`;  // Mark both Present and Scheduled Leave
         } else if (scheduled?.isLeave) {
           status = 'Leave';
         } else if (checkIn) {
-          const officeName = checkIn.officeName?.toLowerCase() || '';
-          status = (!officeName.includes("velechery") && !officeName.includes("pallikaranai")) ? 'WFH' : 'Present';
+          status = isPhysicalOfficePresent(checkIn.officeName) ? 'Present' : 'WFH';
         } else if (dateObj.getDay() !== 0 && scheduled && !scheduled.isLeave) {
           status = 'Absent';
         }
@@ -646,10 +663,7 @@ const Report = () => {
       else if (checkIn) {
         presentCount++;
 
-        const officeName = checkIn.officeName?.toLowerCase();
-        const isWFH = officeName &&
-          !officeName.includes("velechery") &&
-          !officeName.includes("pallikaranai");
+        const isWFH = checkIn.officeName && !isPhysicalOfficePresent(checkIn.officeName);
 
         if (isWFH) wfhCount++;
 
@@ -726,7 +740,7 @@ const Report = () => {
                 slotProps={{ textField: { fullWidth: true } }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Search Employee"
@@ -741,6 +755,21 @@ const Report = () => {
                   ),
                 }}
               />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <TextField
+                select
+                fullWidth
+                label="Branch"
+                value={filterBranch}
+                onChange={(e) => setFilterBranch(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="All">All Branches</option>
+                {BRANCH_OPTIONS.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
 
@@ -771,7 +800,7 @@ const Report = () => {
               <h1 className="text-2xl font-bold text-gray-600">
                 {monthYearLabel} User wise Attendance Report
               </h1>
-              <Chip label={`${employees.length} Active`} color="success" size="small" variant="outlined" />
+              <Chip label={`${employees.length} Active${filterBranch !== 'All' ? ` · ${filterBranch}` : ''}`} color="success" size="small" variant="outlined" />
               <Chip label={`${holidays.length} Holidays`} color="secondary" size="small" variant="outlined" />
               <Chip
                 label={`${approvedLeaves.filter((l) => (l.status || '').toLowerCase() === 'approved' && new Date(l.fromDate).getFullYear() === year && new Date(l.fromDate).getMonth() === month).length} Approved Leaves`}
@@ -809,6 +838,8 @@ const Report = () => {
                   incompleteDays
                 } = getEmployeeStats(employee, weeklySchedule, resolvedUserId);
 
+                const reportUser = findUserForEmployee(employee, schedules, allUsers, logs);
+                const branchLabel = getUserBranch(reportUser);
                 const position = role || "Position not specified";
                 const company = org || "Company not specified";
                 const attendanceDenominator = scheduledWorkingDays || presentCount + absentCount;
@@ -835,6 +866,21 @@ const Report = () => {
                                 <Typography variant="body2" color="text.secondary">
                                   {company}
                                 </Typography>
+                                {branchLabel && (
+                                  <Chip
+                                    label={branchLabel}
+                                    size="small"
+                                    sx={{ mt: 0.5 }}
+                                    color={
+                                      branchLabel === 'Chennai Velachery'
+                                        ? 'primary'
+                                        : branchLabel === 'Chennai Pallikarani'
+                                          ? 'success'
+                                          : 'warning'
+                                    }
+                                    variant="outlined"
+                                  />
+                                )}
                               </Box>
                               <Grid item xs={6} sm={4} md={3} >
                                 <Paper elevation={1} sx={{ p: 2, mx: 6, border: '1px solid #ddd', textAlign: "center" }}>
@@ -1032,8 +1078,7 @@ const Report = () => {
                                     status = "Scheduled Leave";
                                     statusColor = "info";
                                   } else if (checkIn && checkOut) {
-                                    const officeName = checkIn.officeName?.toLowerCase() || '';
-                                    isWFH = !officeName.includes("velechery") && !officeName.includes("pallikaranai");
+                                    isWFH = checkIn.officeName && !isPhysicalOfficePresent(checkIn.officeName);
 
                                     status = isWFH ? "Remote" : "Present";
                                     statusColor = isWFH ? "secondary" : "success";

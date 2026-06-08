@@ -51,26 +51,27 @@ const PayslipList = () => {
        doc.setFontSize(9);
        doc.setTextColor(...secondaryColor);
        doc.setFont("helvetica", "normal");
-       doc.text("No 9/29, 5th street, Kamakoti nagar, Pallikaranai, Chennai - 600100", pageWidth / 2, 20, { align: "center" });
+       doc.text("9/29, 5th Street Kamakoti Nagar, Pallikaranai, Chennai - 600100", pageWidth / 2, 20, { align: "center" });
+       doc.text("CINNO - U46512TN2025PTC175901 || GSTNO-33AADCU7262Q1ZR", pageWidth / 2, 24, { align: "center" });
      
        // Payslip Title
        doc.setFontSize(12);
        doc.setTextColor(...primaryColor);
-       doc.text("PAYSLIP", pageWidth / 2, 30, { align: "center" });
+       doc.text("PAYSLIP", pageWidth / 2, 33, { align: "center" });
      
        doc.setFontSize(10);
        doc.setTextColor(...secondaryColor);
-       doc.text(`For the month of ${employeeDetails.month}`, pageWidth / 2, 35, { align: "center" });
-       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth - margin, 35, { align: "right" });
+       doc.text(`For the month of ${employeeDetails.month}`, pageWidth / 2, 38, { align: "center" });
+       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth - margin, 38, { align: "right" });
      
        // Divider line
        doc.setDrawColor(...primaryColor);
        doc.setLineWidth(0.5);
-       doc.line(margin, 40, pageWidth - margin, 40);
+       doc.line(margin, 43, pageWidth - margin, 43);
      
        // Employee Info and Attendance side by side
        const columnWidth = (pageWidth - 2 * margin) / 2 - 5;
-       const startY = 45;
+       const startY = 48;
      
        // Employee Info Column 1
        doc.setFontSize(10);

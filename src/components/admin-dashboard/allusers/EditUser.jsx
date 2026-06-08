@@ -4,7 +4,9 @@ import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '../../../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
-import { emptyWork, getUserWorks, withSyncedWorks } from '../../../utils/userWorks';
+import { emptyWork, getUserWorks, normalizeStringList } from '../../../utils/userWorks';
+import { BRANCH_OPTIONS, extractBranchFromUser, buildUserUpdatePayload } from '../../../utils/branches';
+import './edit-form.css';
 
 const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
   const [form, setForm] = useState({
@@ -26,12 +28,13 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
     isActive: true,
     adminComments: '',
     employeeId: '',
+    branch: '',
     bankDetails: {
       bankingName: '',
       bankAccountNumber: '',
       ifscCode: '',
-      upiId: ''
-    }
+      upiId: '',
+    },
   });
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' });
@@ -41,18 +44,20 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
 
   useEffect(() => {
     if (!userId) return;
-    axios.get(API_ENDPOINTS.getUserById(userId), {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
+    axios
+      .get(API_ENDPOINTS.getUserById(userId), {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      })
       .then(({ data }) => {
         const works = getUserWorks(data);
         setForm({
           ...data,
-          skills: data.skills || [],
-          rolesAndResponsibility: data.rolesAndResponsibility || [],
+          skills: normalizeStringList(data.skills),
+          rolesAndResponsibility: normalizeStringList(data.rolesAndResponsibility),
           works: works.length ? works : [emptyWork()],
           bankDetails: data.bankDetails || {},
           isActive: data.isActive ?? false,
+          branch: extractBranchFromUser(data),
         });
       })
       .catch(() => Swal.fire('Error', 'Failed to fetch user', 'error'));
@@ -60,12 +65,12 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswordData(prev => ({ ...prev, [name]: value }));
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handlePasswordUpdate = async () => {
@@ -95,8 +100,13 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const { password, ...formDataWithoutPassword } = withSyncedWorks(form);
-      await axios.put(API_ENDPOINTS.updateUser(userId), formDataWithoutPassword, { headers });
+      const payload = buildUserUpdatePayload(form);
+      const { data: updated } = await axios.put(API_ENDPOINTS.updateUser(userId), payload, { headers });
+      const savedBranch = extractBranchFromUser(updated);
+      const expectedBranch = payload.branch || '';
+      if (expectedBranch && savedBranch !== expectedBranch) {
+        console.warn('Branch may not have persisted on server:', { expectedBranch, savedBranch });
+      }
       Swal.fire('Success', 'User updated successfully', 'success');
       onUpdated?.();
       if (isPage) navigate(-1);
@@ -108,12 +118,12 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
   };
 
   const handleArrayField = (name, value) => {
-    setForm(prev => ({ ...prev, [name]: value.split(',').map(v => v.trim()) }));
+    setForm((prev) => ({ ...prev, [name]: value.split(',').map((v) => v.trim()).filter(Boolean) }));
   };
 
   const handleBankChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, bankDetails: { ...prev.bankDetails, [name]: value } }));
+    setForm((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, [name]: value } }));
   };
 
   const handleWorkChange = (index, field, value) => {
@@ -151,236 +161,264 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
     });
   };
 
+  const shellClass = isPage ? 'uc-edit-page' : 'uc-edit-overlay';
+
   return (
-    <div className={isPage ? 'p-6 bg-gray-50 min-h-screen' : 'fixed inset-0 z-50 bg-black bg-opacity-40 flex items-start justify-center p-6 overflow-auto'}>
-      <div className={`bg-white max-w-4xl w-full rounded-lg shadow-lg overflow-y-auto ${isPage ? 'mx-auto mt-6' : 'max-h-[92vh]'}`}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b">
-          <div className="flex items-center gap-4">
+    <div className={shellClass}>
+      <div className="uc-edit-card">
+        <div className="uc-edit-header">
+          <div className="uc-edit-header-left">
             {isPage && (
-              <button onClick={() => navigate(-1)} className="p-2 rounded hover:bg-gray-100 mr-2">
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <button type="button" className="uc-edit-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+                <ChevronLeft size={20} />
               </button>
             )}
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-bold text-gray-700">
-              {form.name?.charAt(0) || 'U'}
-            </div>
+            <div className="uc-edit-avatar">{form.name?.charAt(0) || 'U'}</div>
             <div>
-              <h2 className="text-lg font-semibold">Edit User</h2>
-              <div className="text-sm text-gray-500">{form.email}</div>
+              <h2 className="uc-edit-title">Edit User</h2>
+              <p className="uc-edit-subtitle">{form.email || '—'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-gray-500">Employee ID</div>
-            <div className="font-mono text-sm text-gray-800">{form.employeeId || '—'}</div>
+          <div className="uc-edit-emp-id">
+            <span>Employee ID</span>
+            <strong>{form.employeeId || '—'}</strong>
             {!isPage && (
-              <button onClick={onClose} className="text-gray-500 hover:text-black text-2xl">&times;</button>
+              <button
+                type="button"
+                className="uc-btn uc-btn-outline"
+                style={{ marginTop: 8 }}
+                onClick={onClose}
+              >
+                Close
+              </button>
             )}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <label className="text-sm text-gray-600">Full name</label>
-            <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="Name" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Email</label>
-            <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Email" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Phone</label>
-            <input type="text" name="phone" value={form.phone} onChange={handleChange} placeholder="Phone" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Date of Joining</label>
-            <input type="date" name="dateOfJoining" value={form.dateOfJoining?.slice(0, 10) || ''} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Date of Relieving</label>
-            <input
-              type="date"
-              name="dateOfRelieving"
-              value={form.dateOfRelieving?.slice(0, 10) || ''}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-            />
-            <p className="text-xs text-gray-500 -mt-1">Leave empty if the employee is still working.</p>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-sm text-gray-600">Salary</label>
-            <input type="number" name="salary" value={form.salary} onChange={handleChange} placeholder="Salary" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Qualification</label>
-            <input type="text" name="qualification" value={form.qualification} onChange={handleChange} placeholder="Qualification" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Skills (comma separated)</label>
-            <input type="text" name="skills" value={form.skills.join(', ')} onChange={(e) => handleArrayField('skills', e.target.value)} placeholder="e.g. React,Node" className="w-full border rounded px-3 py-2" />
-
-            <label className="text-sm text-gray-600">Responsibilities (comma separated)</label>
-            <input type="text" name="rolesAndResponsibility" value={form.rolesAndResponsibility.join(', ')} onChange={(e) => handleArrayField('rolesAndResponsibility', e.target.value)} placeholder="Comma separated" className="w-full border rounded px-3 py-2" />
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="isActive"
-                name="isActive"
-                checked={form.isActive}
-                onChange={handleChange}
-                className="w-4 h-4"
-              />
-              <label htmlFor="isActive" className="text-sm font-medium">Active User</label>
+        <form onSubmit={handleSubmit} className="uc-edit-form">
+          <div className="uc-form-grid-2">
+            <div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-name">Full name</label>
+                <input id="edit-name" type="text" name="name" value={form.name} onChange={handleChange} placeholder="Name" />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-email">Email</label>
+                <input id="edit-email" type="email" name="email" value={form.email} onChange={handleChange} placeholder="Email" />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-phone">Phone</label>
+                <input id="edit-phone" type="text" name="phone" value={form.phone} onChange={handleChange} placeholder="Phone" />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-branch">Branch</label>
+                <select id="edit-branch" name="branch" value={form.branch || ''} onChange={handleChange}>
+                  <option value="">Select branch</option>
+                  {BRANCH_OPTIONS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+                <p className="uc-form-hint">Chennai Pallikarani, Chennai Velachery, or Tirunelveli office.</p>
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-join">Date of Joining</label>
+                <input
+                  id="edit-join"
+                  type="date"
+                  name="dateOfJoining"
+                  value={form.dateOfJoining?.slice(0, 10) || ''}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-relieving">Date of Relieving</label>
+                <input
+                  id="edit-relieving"
+                  type="date"
+                  name="dateOfRelieving"
+                  value={form.dateOfRelieving?.slice(0, 10) || ''}
+                  onChange={handleChange}
+                />
+                <p className="uc-form-hint">Leave empty if the employee is still working.</p>
+              </div>
             </div>
 
+            <div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-salary">Salary</label>
+                <input id="edit-salary" type="number" name="salary" value={form.salary} onChange={handleChange} placeholder="Salary" />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-qual">Qualification</label>
+                <input id="edit-qual" type="text" name="qualification" value={form.qualification} onChange={handleChange} placeholder="Qualification" />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-skills">Skills (comma separated)</label>
+                <input
+                  id="edit-skills"
+                  type="text"
+                  value={form.skills.join(', ')}
+                  onChange={(e) => handleArrayField('skills', e.target.value)}
+                  placeholder="e.g. Power BI, Tableau, SQL"
+                />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-roles">Responsibilities (comma separated)</label>
+                <input
+                  id="edit-roles"
+                  type="text"
+                  value={form.rolesAndResponsibility.join(', ')}
+                  onChange={(e) => handleArrayField('rolesAndResponsibility', e.target.value)}
+                  placeholder="Training, Interview Support"
+                />
+              </div>
+              <div className="uc-form-check">
+                <input type="checkbox" id="isActive" name="isActive" checked={form.isActive} onChange={handleChange} />
+                <label htmlFor="isActive">Active User</label>
+              </div>
+            </div>
           </div>
 
-          {/* Multiple work assignments */}
-          <div className="col-span-1 md:col-span-2 border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="uc-form-section">
+            <div className="uc-form-section-head">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800">Work Assignments</h3>
-                <p className="text-xs text-gray-500 mt-0.5">One person can have multiple company / department / role entries.</p>
+                <h3>Work Assignments</h3>
+                <p>One person can have multiple company / department / role entries.</p>
               </div>
-              <button
-                type="button"
-                onClick={addWork}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-              >
-                <Plus className="w-4 h-4" />
+              <button type="button" className="uc-btn uc-btn-indigo" onClick={addWork}>
+                <Plus size={16} />
                 Add Work
               </button>
             </div>
 
-            <div className="space-y-3">
-              {(form.works || []).map((work, index) => (
-                <div key={index} className="border rounded-lg p-4 bg-gray-50 relative">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      {index === 0 ? 'Primary Work' : `Work ${index + 1}`}
-                    </span>
-                    {(form.works || []).length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeWork(index)}
-                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Remove
-                      </button>
-                    )}
+            {(form.works || []).map((work, index) => (
+              <div key={index} className="uc-work-card">
+                <div className="uc-work-card-head">
+                  <span>{index === 0 ? 'Primary Work' : `Work ${index + 1}`}</span>
+                  {(form.works || []).length > 1 && (
+                    <button type="button" className="uc-btn-text-danger" onClick={() => removeWork(index)}>
+                      <Trash2 size={14} />
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div className="uc-form-grid-3">
+                  <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                    <label>Company</label>
+                    <input
+                      type="text"
+                      list={`companies-${index}`}
+                      value={work.company}
+                      onChange={(e) => handleWorkChange(index, 'company', e.target.value)}
+                      placeholder="e.g. Urbancode, Jobzenter"
+                    />
+                    <datalist id={`companies-${index}`}>
+                      <option value="Jobzenter" />
+                      <option value="Urbancode" />
+                    </datalist>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-sm text-gray-600">Company</label>
-                      <input
-                        type="text"
-                        list={`companies-${index}`}
-                        value={work.company}
-                        onChange={(e) => handleWorkChange(index, 'company', e.target.value)}
-                        placeholder="e.g. Urbancode, Jobzenter"
-                        className="w-full border rounded px-3 py-2 mt-1 bg-white"
-                      />
-                      <datalist id={`companies-${index}`}>
-                        <option value="Jobzenter" />
-                        <option value="Urbancode" />
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">Department</label>
-                      <input
-                        type="text"
-                        value={work.department}
-                        onChange={(e) => handleWorkChange(index, 'department', e.target.value)}
-                        placeholder="Department"
-                        className="w-full border rounded px-3 py-2 mt-1 bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600">Designation</label>
-                      <input
-                        type="text"
-                        value={work.position}
-                        onChange={(e) => handleWorkChange(index, 'position', e.target.value)}
-                        placeholder="Designation"
-                        className="w-full border rounded px-3 py-2 mt-1 bg-white"
-                      />
-                    </div>
+                  <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                    <label>Department</label>
+                    <input
+                      type="text"
+                      value={work.department}
+                      onChange={(e) => handleWorkChange(index, 'department', e.target.value)}
+                      placeholder="Department"
+                    />
+                  </div>
+                  <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                    <label>Designation</label>
+                    <input
+                      type="text"
+                      value={work.position}
+                      onChange={(e) => handleWorkChange(index, 'position', e.target.value)}
+                      placeholder="Designation"
+                    />
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
+          </div>
+
+          <div className="uc-form-section">
+            <div className="uc-form-field">
+              <label htmlFor="edit-comments">Admin Comments</label>
+              <textarea
+                id="edit-comments"
+                name="adminComments"
+                value={form.adminComments || ''}
+                onChange={handleChange}
+                placeholder="Internal notes / comments"
+                rows={4}
+              />
             </div>
           </div>
 
-          {/* Admin comments - full width editable by admin */}
-          <div className="col-span-1 md:col-span-2">
-            <label className="text-sm text-gray-600">Admin Comments</label>
-            <textarea
-              name="adminComments"
-              value={form.adminComments || ''}
-              onChange={handleChange}
-              placeholder="Internal notes / comments"
-              className="w-full border rounded px-3 py-2 h-24 resize-none"
-            />
-          </div>
-
-          {/* Banking - full width */}
-          <div className="col-span-1 md:col-span-2 border-t pt-4">
-            <h3 className="text-sm font-semibold mb-3">Banking Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input type="text" name="bankingName" value={form.bankDetails.bankingName || ''} onChange={handleBankChange} placeholder="Bank Name" className="w-full border rounded px-3 py-2" />
-              <input type="text" name="bankAccountNumber" value={form.bankDetails.bankAccountNumber || ''} onChange={handleBankChange} placeholder="Account Number" className="w-full border rounded px-3 py-2 font-mono" />
-              <input type="text" name="ifscCode" value={form.bankDetails.ifscCode || ''} onChange={handleBankChange} placeholder="IFSC Code" className="w-full border rounded px-3 py-2 font-mono" />
+          <div className="uc-form-section">
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Banking Details</h3>
+            <div className="uc-form-grid-3">
+              <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                <label>Bank Name</label>
+                <input type="text" name="bankingName" value={form.bankDetails.bankingName || ''} onChange={handleBankChange} placeholder="Bank Name" />
+              </div>
+              <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                <label>Account Number</label>
+                <input type="text" name="bankAccountNumber" value={form.bankDetails.bankAccountNumber || ''} onChange={handleBankChange} placeholder="Account Number" />
+              </div>
+              <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                <label>IFSC Code</label>
+                <input type="text" name="ifscCode" value={form.bankDetails.ifscCode || ''} onChange={handleBankChange} placeholder="IFSC Code" />
+              </div>
             </div>
-            <div className="mt-3">
-              <input type="text" name="upiId" value={form.bankDetails.upiId || ''} onChange={handleBankChange} placeholder="UPI ID" className="w-full border rounded px-3 py-2 font-mono" />
+            <div className="uc-form-field">
+              <label>UPI ID</label>
+              <input type="text" name="upiId" value={form.bankDetails.upiId || ''} onChange={handleBankChange} placeholder="UPI ID" />
             </div>
           </div>
 
-          {/* Password Section */}
-          <div className="col-span-1 md:col-span-2 border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium">Change Password</h3>
-              <button 
-                type="button"
-                onClick={() => setShowPasswordFields(!showPasswordFields)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
+          <div className="uc-form-section">
+            <div className="uc-form-section-head">
+              <h3>Change Password</h3>
+              <button type="button" className="uc-btn uc-btn-outline" onClick={() => setShowPasswordFields(!showPasswordFields)}>
                 {showPasswordFields ? 'Cancel' : 'Change Password'}
               </button>
             </div>
-
             {showPasswordFields && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded">
-                <input 
-                  type="password" 
-                  name="newPassword" 
-                  value={passwordData.newPassword} 
-                  onChange={handlePasswordChange} 
-                  placeholder="New Password" 
-                  className="w-full border rounded px-3 py-2" 
-                />
-                <input 
-                  type="password" 
-                  name="confirmPassword" 
-                  value={passwordData.confirmPassword} 
-                  onChange={handlePasswordChange} 
-                  placeholder="Confirm Password" 
-                  className="w-full border rounded px-3 py-2" 
-                />
-                <div className="md:col-span-2 flex gap-2">
-                  <button 
-                    type="button"
-                    onClick={handlePasswordUpdate}
-                    className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700"
-                  >
+              <div className="uc-password-panel">
+                <div className="uc-form-grid-2">
+                  <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                    <label>New Password</label>
+                    <input type="password" name="newPassword" value={passwordData.newPassword} onChange={handlePasswordChange} placeholder="New Password" />
+                  </div>
+                  <div className="uc-form-field" style={{ marginBottom: 0 }}>
+                    <label>Confirm Password</label>
+                    <input type="password" name="confirmPassword" value={passwordData.confirmPassword} onChange={handlePasswordChange} placeholder="Confirm Password" />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginTop: '1rem' }}>
+                  <button type="button" className="uc-btn uc-btn-success" onClick={handlePasswordUpdate}>
                     Update Password
                   </button>
-                  <div className="text-sm text-gray-500 self-center">Password must be at least 6 characters</div>
+                  <span className="uc-form-hint" style={{ margin: 0 }}>Password must be at least 6 characters</span>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-2">
-            {!isPage && <button type="button" onClick={onClose} className="px-4 py-2 rounded border">Cancel</button>}
-            <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white">Save Changes</button>
+          <div className="uc-form-actions">
+            {!isPage && (
+              <button type="button" className="uc-btn uc-btn-outline" onClick={onClose}>
+                Cancel
+              </button>
+            )}
+            {isPage && (
+              <button type="button" className="uc-btn uc-btn-outline" onClick={() => navigate(-1)}>
+                Cancel
+              </button>
+            )}
+            <button type="submit" className="uc-btn uc-btn-primary">
+              Save Changes
+            </button>
           </div>
         </form>
       </div>

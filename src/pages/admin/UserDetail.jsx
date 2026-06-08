@@ -15,7 +15,9 @@ const UserDetail = () => {
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(API_ENDPOINTS.getUserById(userId), { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get(API_ENDPOINTS.getUserById(userId), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setUser(res.data || null);
       } catch (err) {
         console.error('Failed to fetch user', err);
@@ -30,18 +32,23 @@ const UserDetail = () => {
   if (loading) return <Loader />;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-4">
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900">
-            ← Back
-          </button>
-        </div>
+    <div className="uc-profile-page">
+      <div className="uc-profile-shell">
+        <button type="button" className="uc-profile-back" onClick={() => navigate('/all-users')}>
+          ← Back to All Users
+        </button>
 
         {user ? (
-          <UserCard user={user} forceExpanded onEdit={(id) => navigate(`/all-users/${id}/edit`)} onClose={() => navigate(-1)} />
+          <UserCard
+            user={user}
+            forceExpanded
+            showCloseButton={false}
+            onEdit={(id) => navigate(`/all-users/${id}/edit`)}
+          />
         ) : (
-          <div className="bg-white p-6 rounded shadow">User not found</div>
+          <div className="uc-profile-card">
+            <p className="uc-empty-msg">User not found</p>
+          </div>
         )}
       </div>
     </div>

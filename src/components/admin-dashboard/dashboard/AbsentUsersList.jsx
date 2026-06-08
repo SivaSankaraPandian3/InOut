@@ -2,42 +2,50 @@ import React from 'react';
 
 const AbsentUsersList = ({ allUsers = [], logs = [] }) => {
   const presentUserIds = logs
-    .filter(log => log.type === 'check-in')
-    .map(log => log.userId)
+    .filter((log) => log.type === 'check-in')
+    .map((log) => log.userId)
     .filter(Boolean);
 
-  const absentees = allUsers.filter(user => !presentUserIds.includes(user._id));
+  const absentees = allUsers.filter((user) => !presentUserIds.includes(user._id));
 
   if (absentees.length === 0) return null;
 
   return (
-    <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h2 className="text-lg font-medium text-gray-800">
-          Absent Employees ({absentees.length})
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          Employees who haven't checked in today
-        </p>
+    <div className="uc-list-panel">
+      <div className="uc-list-header">
+        <h2>Absent Employees ({absentees.length})</h2>
+        <p>Employees who haven&apos;t checked in today</p>
       </div>
-      
-      <ul className="divide-y divide-gray-100">
-        {absentees.map(user => (
-          <li key={user._id} className="px-4 py-3 hover:bg-gray-50">
-            <div className="flex justify-between items-center">
-              <span className="font-medium text-gray-800">{user.name}</span>
-              <span className="text-sm text-gray-500">{user.position} | {user.company}</span>
+
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {absentees.map((user) => (
+          <li key={user._id} className="uc-list-item">
+            <div className="uc-flex-between" style={{ marginBottom: 0 }}>
+              <span style={{ fontWeight: 500, color: '#1f2937' }}>{user.name}</span>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                {user.position} | {user.company}
+              </span>
             </div>
             {user.department && (
-              <span className="inline-block mt-1 text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginTop: 4,
+                  fontSize: '0.75rem',
+                  padding: '2px 8px',
+                  background: '#f3f4f6',
+                  color: '#4b5563',
+                  borderRadius: 4,
+                }}
+              >
                 {user.department}
               </span>
             )}
           </li>
         ))}
       </ul>
-      
-      <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 border-t border-gray-100">
+
+      <div style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', color: '#6b7280', borderTop: '1px solid #e5e7eb' }}>
         Last updated: {new Date().toLocaleTimeString()}
       </div>
     </div>

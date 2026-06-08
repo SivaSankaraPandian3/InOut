@@ -5,7 +5,6 @@ import { FiDownload } from 'react-icons/fi';
 const ReportGenerator = ({ logs, allUsers, selectedDate }) => {
 
 
-  console.log('ReportGenerator logs:', logs);
   const calculateHours = (checkIn, checkOut) => {
     const start = new Date(checkIn.timestamp);
     const end = new Date(checkOut.timestamp);

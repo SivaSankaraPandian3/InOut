@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import { jwtDecode } from 'jwt-decode';
 import { API_ENDPOINTS } from '../utils/api';
+import { appendAttendanceImage } from '../utils/attendanceImage';
 import Swal from 'sweetalert2';
 
 function Attendance() {
@@ -31,7 +32,7 @@ function Attendance() {
 
     const fetchData = async () => {
       try {
-        const res = await axios.get(API_ENDPOINTS.getLastAttendance, {
+        const res = await axios.get(API_ENDPOINTS.getLastAttendanceGlobal, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -111,25 +112,37 @@ function Attendance() {
     });
   };
 
-  const captureImage = async () => {
-    try {
-      if (!videoRef.current) return;
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      canvas.getContext('2d').drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(async blob => {
-        const file = new File([blob], 'attendance.jpg', { type: 'image/jpeg' });
-        const compressed = await compressImage(file);
-        compressed ? setImage(compressed) : Swal.fire({ icon: 'error', title: 'Compression Failed' });
-      }, 'image/jpeg', 0.9);
-    } catch {
-      Swal.fire({ icon: 'error', title: 'Image Capture Failed' });
-    }
-  };
+  const captureImage = () =>
+    new Promise((resolve) => {
+      try {
+        if (!videoRef.current) {
+          resolve(null);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        canvas.getContext('2d').drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            resolve(null);
+            return;
+          }
+          const file = new File([blob], 'attendance.jpg', { type: 'image/jpeg' });
+          const compressed = await compressImage(file);
+          resolve(compressed || null);
+        }, 'image/jpeg', 0.9);
+      } catch {
+        resolve(null);
+      }
+    });
 
-  const handleSubmit = async () => {
-    if (!image) return Swal.fire('No image captured!');
+  const handleSubmit = async (photoFile) => {
+    const fileToSend = photoFile || image;
+    if (!fileToSend) {
+      Swal.fire('No image captured!');
+      return;
+    }
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
@@ -137,13 +150,12 @@ function Attendance() {
       const formData = new FormData();
       formData.append('type', type);
       formData.append('location', coords);
-      formData.append('image', image);
+      appendAttendanceImage(formData, fileToSend);
       try {
         await axios.post(API_ENDPOINTS.postAttendance, formData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'multipart/form-data'
-          }
+          },
         });
         Swal.fire(`${type === 'check-in' ? 'Checked In' : 'Checked Out'} successfully!`);
         setImage(null);
@@ -156,6 +168,16 @@ function Attendance() {
       Swal.fire({ icon: 'error', title: 'Location Error', text: 'Please enable GPS to proceed.' });
       setIsLoading(false);
     });
+  };
+
+  const captureAndSubmit = async () => {
+    const captured = await captureImage();
+    if (!captured) {
+      Swal.fire({ icon: 'error', title: 'Image Capture Failed' });
+      return;
+    }
+    setImage(captured);
+    await handleSubmit(captured);
   };
 
   return (
@@ -215,10 +237,7 @@ function Attendance() {
 
       <div
         className="flex justify-between items-center bg-red-500 text-white p-4 rounded-full shadow-md cursor-pointer mt-4"
-        onClick={() => {
-          captureImage();
-          handleSubmit();
-        }}
+        onClick={captureAndSubmit}
       >
         <span className="text-sm">Swipe to {type === 'check-in' ? 'Check In' : 'Check Out'}</span>
         <FiChevronRight />

@@ -6,8 +6,8 @@ const EditUserPage = () => {
   const { userId } = useParams();
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-5xl mx-auto">
+    <div className="uc-profile-page">
+      <div className="uc-profile-shell">
         <EditUser userId={userId} pageMode />
       </div>
     </div>

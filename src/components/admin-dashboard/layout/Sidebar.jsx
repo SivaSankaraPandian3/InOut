@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import './layout.css';
 import {
   FiHome, FiUsers, FiCalendar, FiBarChart2, FiSettings, FiLogOut,
   FiFileText, FiDollarSign, FiCamera, FiChevronRight
@@ -13,6 +14,7 @@ const menuItems = [
     icon: <FiUsers />,
     subItems: [
       { label: 'User profiles', path: '/all-users' },
+      { label: 'Add User', path: '/add-user' },
       { label: 'Employees Schedules', path: '/employees' },
       
       { label: 'Pending Approvals', path: '/pending-users' }
@@ -67,47 +69,42 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   return (
     <>
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white text-gray-800 border-r z-40 transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0`}
-      >
-        <div className="text-xl font-semibold text-center py-4 border-b border-gray-200">
+      <aside className={`admin-sidebar ${isOpen ? 'is-open' : ''}`}>
+        <div className="admin-sidebar-brand">
           INOUT HR Portal
         </div>
 
-        <nav className="mt-4 px-2 flex flex-col gap-1 overflow-y-auto h-[calc(100vh-80px)]">
+        <nav className="admin-sidebar-nav">
           {menuItems.map((item, index) => {
             if (item.subItems) {
               return (
                 <div key={index} className="mb-1">
                   <button
+                    type="button"
                     onClick={() => toggleItem(item.label)}
-                    className="flex items-center justify-between w-full px-4 py-2 rounded-md hover:bg-gray-100 text-sm font-medium transition"
+                    className="admin-nav-btn"
+                    style={{ justifyContent: 'space-between' }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{item.icon}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span>{item.icon}</span>
                       <span>{item.label}</span>
-                    </div>
+                    </span>
                     <FiChevronRight
-                      className={`transition-transform duration-200 ${
-                        expandedItems[item.label] ? 'rotate-90' : ''
-                      }`}
+                      style={{
+                        transform: expandedItems[item.label] ? 'rotate(90deg)' : 'none',
+                        transition: 'transform 0.2s',
+                      }}
                     />
                   </button>
 
                   {expandedItems[item.label] && (
-                    <div className="ml-8 mt-1 space-y-1">
+                    <div className="admin-nav-submenu">
                       {item.subItems.map((subItem, subIndex) => (
                         <NavLink
                           key={subIndex}
                           to={subItem.path}
                           className={({ isActive }) =>
-                            `block px-3 py-2 rounded-md text-sm font-medium ${
-                              isActive
-                                ? 'bg-gray-200 text-black'
-                                : 'text-gray-700 hover:bg-gray-100'
-                            }`
+                            `admin-nav-sublink${isActive ? ' active' : ''}`
                           }
                           onClick={() => setIsOpen(false)}
                         >
@@ -125,26 +122,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 key={index}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition ${
-                    isActive
-                      ? 'bg-gray-200 text-black'
-                      : 'text-gray-800 hover:bg-gray-100'
-                  }`
+                  `admin-nav-link${isActive ? ' active' : ''}`
                 }
                 onClick={() => setIsOpen(false)}
               >
-                <span className="text-lg">{item.icon}</span>
+                <span>{item.icon}</span>
                 <span>{item.label}</span>
               </NavLink>
             );
           })}
 
-          <div className="mt-auto pb-4 px-4">
+          <div className="admin-nav-logout-wrap">
             <button
+              type="button"
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full  py-2 rounded-md text-sm font-medium text-red-600 hover:bg-gray-100"
+              className="admin-nav-btn admin-nav-logout"
             >
-              <FiLogOut className="text-lg" />
+              <FiLogOut />
               <span>Logout</span>
             </button>
           </div>
@@ -153,7 +147,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 z-30 md:hidden"
+          className="admin-sidebar-overlay"
+          role="presentation"
           onClick={() => setIsOpen(false)}
         />
       )}

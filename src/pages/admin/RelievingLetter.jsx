@@ -20,6 +20,7 @@ import {
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
 import letterheadUrl from '../../assets/letterhead.pdf';
+import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
 
 const RelievingLetter = () => {
   const [candidates, setCandidates] = useState([]);
@@ -39,7 +40,7 @@ We confirm that there are no pending obligations between {{name}} and {{company}
 We wish {{name}} success and all the very best in their future professional endeavors.
 
 Sincerely,
-HR Team
+Founder
 {{company}}`);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
@@ -214,6 +215,7 @@ HR Team
         } catch (sigErr) { console.error('Signature embed error', sigErr); }
       }
 
+  await shrinkLetterheadPhoneIconOnAllPages(pdfDoc);
   const pdfBytes = await pdfDoc.save();
   setPdfBytesData(pdfBytes);
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });

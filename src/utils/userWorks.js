@@ -2,6 +2,7 @@ export const emptyWork = () => ({
   company: '',
   department: '',
   position: '',
+  branch: '',
 });
 
 /** Normalize legacy single company/department/position into a works array. */
@@ -12,6 +13,7 @@ export const getUserWorks = (user) => {
       company: w.company || '',
       department: w.department || '',
       position: w.position || '',
+      branch: w.branch || '',
     }));
   }
   if (user.company || user.department || user.position) {
@@ -32,16 +34,46 @@ export const getPrimaryWork = (user) => {
 };
 
 /** Keep top-level fields in sync with the first work entry for older API consumers. */
-export const withSyncedWorks = (user) => {
+export const withSyncedWorks = (user, branchOverride = '') => {
   const works = getUserWorks(user);
   const primary = works[0] || emptyWork();
+  const branch = branchOverride || user.branch || primary.branch || user.bankDetails?.officeBranch || '';
+  const worksWithBranch = works.map((w, i) => ({
+    ...w,
+    branch: i === 0 ? branch : w.branch || branch,
+  }));
   return {
     ...user,
-    works,
+    works: worksWithBranch,
     company: primary.company,
     department: primary.department,
     position: primary.position,
+    branch,
+    bankDetails: {
+      ...(user.bankDetails || {}),
+      officeBranch: branch,
+    },
   };
+};
+
+/** Skills / roles may be array, comma string, or legacy single blob — always return string[]. */
+export const normalizeStringList = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((s) => String(s).trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('|')) {
+      return trimmed.split(/[,;|]+/).map((s) => s.trim()).filter(Boolean);
+    }
+    if (/[a-z][A-Z]/.test(trimmed)) {
+      return trimmed.split(/(?=[A-Z])/).map((s) => s.trim()).filter(Boolean);
+    }
+    return [trimmed];
+  }
+  return [];
 };
 
 export const formatWorksSummary = (user) => {

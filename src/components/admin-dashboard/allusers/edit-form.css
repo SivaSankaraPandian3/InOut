@@ -1,0 +1,285 @@
+.uc-edit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.uc-edit-page {
+  width: 100%;
+}
+
+.uc-edit-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  max-width: 56rem;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.uc-edit-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.uc-edit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.uc-edit-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.uc-edit-back-btn:hover {
+  background: #f3f4f6;
+}
+
+.uc-edit-avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.uc-edit-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.uc-edit-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  word-break: break-all;
+}
+
+.uc-edit-emp-id {
+  text-align: right;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.uc-edit-emp-id strong {
+  display: block;
+  font-family: monospace;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.uc-edit-form {
+  padding: 1.5rem;
+}
+
+.uc-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .uc-form-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.uc-form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .uc-form-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.uc-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.uc-form-field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.uc-form-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: -0.25rem 0 0.5rem;
+}
+
+.uc-form-field input,
+.uc-form-field select,
+.uc-form-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+.uc-form-field input:focus,
+.uc-form-field select:focus,
+.uc-form-field textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.uc-form-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.uc-form-check input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.uc-form-section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.uc-form-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.uc-form-section-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.uc-form-section-head p {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.uc-work-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  margin-bottom: 0.75rem;
+}
+
+.uc-work-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.uc-work-card-head span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.uc-btn-text-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.uc-btn-text-danger:hover {
+  color: #991b1b;
+}
+
+.uc-btn-indigo {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.uc-btn-indigo:hover {
+  background: #4338ca;
+}
+
+.uc-password-panel {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+
+.uc-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.uc-btn-success {
+  background: #16a34a;
+  color: #fff;
+}
+
+.uc-btn-success:hover {
+  background: #15803d;
+}

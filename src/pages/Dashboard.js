@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../utils/api';
+import {
+  getAttendanceImage,
+  resolveAttendanceImageUrl,
+} from '../utils/attendanceImage';
 import urbancodeLogo from '../assets/uclogo.png';
 import jobzenterLogo from '../assets/jzlogo.png';
 import {FiMail, FiPhone, FiChevronLeft } from 'react-icons/fi';
@@ -140,7 +144,7 @@ const Dashboard = () => {
   const currentDayCheckOuts = currentDayData.filter(item => item.type === 'check-out').length;
   const currentDayRemote = currentDayData.filter(item => !item.isInOffice).length;
 
-  const handleAddEmployee = () => navigate('/register');
+  const handleAddEmployee = () => navigate('/add-user');
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -229,7 +233,7 @@ const Dashboard = () => {
               </button>
               <div className="p-4">
                 <img 
-                  src={`${API_ENDPOINTS.uploadPath}/${selectedImage}`} 
+                  src={resolveAttendanceImageUrl(selectedImage)} 
                   alt="Full size attendance" 
                   className="max-w-full max-h-[80vh] object-contain"
                 />
@@ -329,14 +333,14 @@ const Dashboard = () => {
                           <div className="flex flex-col items-center">
                             <span className="text-xs text-gray-500 mb-1">Check-in</span>
                             <div className="h-12 w-12 rounded-md overflow-hidden border border-gray-200">
-                              {group.checkIn?.image ? (
+                              {getAttendanceImage(group.checkIn) ? (
                                 <img
-                                  src={`${API_ENDPOINTS.uploadPath}/${group.checkIn.image}`}
+                                  src={resolveAttendanceImageUrl(getAttendanceImage(group.checkIn))}
                                   alt="check-in"
                                   className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedImage(group.checkIn.image);
+                                    setSelectedImage(getAttendanceImage(group.checkIn));
                                   }}
                                   onError={(e) => {
                                     e.target.onerror = null; 
@@ -356,14 +360,14 @@ const Dashboard = () => {
                             <div className="flex flex-col items-center">
                               <span className="text-xs text-gray-500 mb-1">Check-out</span>
                               <div className="h-12 w-12 rounded-md overflow-hidden border border-gray-200">
-                                {group.checkOut?.image ? (
+                                {getAttendanceImage(group.checkOut) ? (
                                   <img
-                                    src={`${API_ENDPOINTS.uploadPath}/${group.checkOut.image}`}
+                                    src={resolveAttendanceImageUrl(getAttendanceImage(group.checkOut))}
                                     alt="check-out"
                                     className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setSelectedImage(group.checkOut.image);
+                                      setSelectedImage(getAttendanceImage(group.checkOut));
                                     }}
                                     onError={(e) => {
                                       e.target.onerror = null;
@@ -463,12 +467,14 @@ const Dashboard = () => {
                   <FiDownload className="mr-2" />
                   PDF
                 </button>
-                <button 
-                  onClick={handleAddEmployee} 
-                  className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                <button
+                  type="button"
+                  onClick={handleAddEmployee}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shrink-0"
+                  title="Add User"
+                  aria-label="Add User"
                 >
-                  <FiUserPlus className="mr-2" />
-                  Add Employee
+                  <FiUserPlus size={16} />
                 </button>
               </div>
             </div>
@@ -605,14 +611,14 @@ const Dashboard = () => {
                           <div className="flex flex-col items-center">
                             <span className="text-xs text-gray-500 mb-1">Check-in</span>
                             <div className="h-12 w-12 rounded-md overflow-hidden border border-gray-200">
-                              {group.checkIn?.image ? (
+                              {getAttendanceImage(group.checkIn) ? (
                                 <img
-                                  src={`${API_ENDPOINTS.uploadPath}/${group.checkIn.image}`}
+                                  src={resolveAttendanceImageUrl(getAttendanceImage(group.checkIn))}
                                   alt="check-in"
                                   className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedImage(group.checkIn.image);
+                                    setSelectedImage(getAttendanceImage(group.checkIn));
                                   }}
                                   onError={(e) => {
                                     e.target.onerror = null;
@@ -632,14 +638,14 @@ const Dashboard = () => {
                             <div className="flex flex-col items-center">
                               <span className="text-xs text-gray-500 mb-1">Check-out</span>
                               <div className="h-12 w-12 rounded-md overflow-hidden border border-gray-200">
-                                {group.checkOut?.image ? (
+                                {getAttendanceImage(group.checkOut) ? (
                                   <img
-                                    src={`${API_ENDPOINTS.uploadPath}/${group.checkOut.image}`}
+                                    src={resolveAttendanceImageUrl(getAttendanceImage(group.checkOut))}
                                     alt="check-out"
                                     className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setSelectedImage(group.checkOut.image);
+                                      setSelectedImage(getAttendanceImage(group.checkOut));
                                     }}
                                     onError={(e) => {
                                       e.target.onerror = null;

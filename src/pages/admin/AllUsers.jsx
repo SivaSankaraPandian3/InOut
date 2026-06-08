@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, UserPlus } from 'lucide-react';
 import { API_ENDPOINTS } from '../../utils/api';
 // UserCard is used on the dedicated user detail page now
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/admin-dashboard/common/Loader';
 import { getPrimaryWork, getUserWorks } from '../../utils/userWorks';
+import { BRANCH_OPTIONS, getUserBranch, matchesBranchFilter, branchBadgeClass } from '../../utils/branches';
 
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
@@ -15,12 +16,14 @@ const AllUsers = () => {
   const [showPastModal, setShowPastModal] = useState(false);
   const [pastSearch, setPastSearch] = useState('');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
   const [filterPosition, setFilterPosition] = useState('All');
   const [filterCompany, setFilterCompany] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filterBranch, setFilterBranch] = useState('All');
 
   // ✅ Move fetchUsers outside useEffect so you can use it in onUpdated
   const fetchUsers = async () => {
@@ -41,12 +44,41 @@ const AllUsers = () => {
     fetchUsers();
   }, []);
 
+  const closeActionMenu = () => {
+    setOpenMenuId(null);
+    setMenuAnchor(null);
+  };
+
+  const toggleActionMenu = (e, user) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (openMenuId === user._id) {
+      closeActionMenu();
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOpenMenuId(user._id);
+    setMenuAnchor({
+      top: rect.bottom + 4,
+      left: Math.max(8, rect.right - 168),
+    });
+  };
+
   useEffect(() => {
     if (!openMenuId) return undefined;
-    const closeMenu = () => setOpenMenuId(null);
-    document.addEventListener('click', closeMenu);
-    return () => document.removeEventListener('click', closeMenu);
+    const onKeyDown = (ev) => {
+      if (ev.key === 'Escape') closeActionMenu();
+    };
+    const onScroll = () => closeActionMenu();
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', onScroll, true);
+    };
   }, [openMenuId]);
+
+  const menuUser = users.find((u) => u._id === openMenuId);
 
   const getAuthHeaders = () => ({
     Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -146,6 +178,7 @@ const AllUsers = () => {
       if (filterStatus === 'Active' && !isActive) return false;
       if (filterStatus === 'Inactive' && isActive) return false;
     }
+    if (!matchesBranchFilter(user, filterBranch)) return false;
     return true;
   };
 
@@ -163,173 +196,165 @@ const AllUsers = () => {
   };
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden flex flex-col min-w-0">
-      <h1 className="text-2xl font-bold mb-4">All Users</h1>
+    <div className="uc-users-wrap">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <h1 className="uc-page-title" style={{ margin: 0 }}>All Users</h1>
+        <button
+          type="button"
+          className="uc-btn uc-btn-primary uc-btn-icon-circle"
+          onClick={() => navigate('/add-user')}
+          title="Add User"
+          aria-label="Add User"
+        >
+          <UserPlus size={16} strokeWidth={2.5} />
+        </button>
+      </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        <div className="bg-slate-100 border-l-4 border-slate-500 p-4 rounded-lg shadow-sm">
-          <p className="text-xs sm:text-sm text-slate-600 font-medium">Total Users</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</p>
+      <div className="uc-users-stats">
+        <div className="uc-stat-card uc-stat-slate">
+          <p className="uc-stat-label">Total Users</p>
+          <p className="uc-stat-value">{stats.total}</p>
         </div>
-        <div className="bg-green-100 border-l-4 border-green-500 p-4 rounded-lg shadow-sm">
-          <p className="text-xs sm:text-sm text-green-700 font-medium">Active</p>
-          <p className="text-2xl font-bold text-green-900 mt-1">{stats.active}</p>
+        <div className="uc-stat-card uc-stat-green">
+          <p className="uc-stat-label">Active</p>
+          <p className="uc-stat-value">{stats.active}</p>
         </div>
-        <div className="bg-red-100 border-l-4 border-red-500 p-4 rounded-lg shadow-sm">
-          <p className="text-xs sm:text-sm text-red-700 font-medium">Inactive</p>
-          <p className="text-2xl font-bold text-red-900 mt-1">{stats.inactive}</p>
+        <div className="uc-stat-card uc-stat-red">
+          <p className="uc-stat-label">Inactive</p>
+          <p className="uc-stat-value">{stats.inactive}</p>
         </div>
-        <div className="bg-indigo-100 border-l-4 border-indigo-500 p-4 rounded-lg shadow-sm">
-          <p className="text-xs sm:text-sm text-indigo-700 font-medium">Filtered Results</p>
-          <p className="text-2xl font-bold text-indigo-900 mt-1">{stats.showing}</p>
+        <div className="uc-stat-card uc-stat-indigo">
+          <p className="uc-stat-label">Filtered Results</p>
+          <p className="uc-stat-value">{stats.showing}</p>
         </div>
       </div>
 
-      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 min-w-0">
-        <div className="flex items-center gap-3 w-full md:w-1/4">
-          <input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name or employee ID"
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
+      <div className="uc-users-toolbar">
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search by name or employee ID"
+          className="uc-input uc-users-search"
+        />
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="border rounded px-2 py-1">
-            <option value="All">All Departments</option>
-            {departments.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
+        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="uc-select uc-users-filter-select">
+          <option value="All">All Departments</option>
+          {departments.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
 
-          {/* <select value={filterPosition} onChange={(e) => setFilterPosition(e.target.value)} className="border rounded px-2 py-1">
-            <option value="All">All Positions</option>
-            {positions.map(p => <option key={p} value={p}>{p}</option>)}
-          </select> */}
+        <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} className="uc-select uc-users-filter-select">
+          <option value="All">All Companies</option>
+          {companies.map((company) => (
+            <option key={company} value={company}>{company}</option>
+          ))}
+        </select>
 
-          <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} className="border rounded px-2 py-1">
-            <option value="All">All Companies</option>
-            {companies.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="uc-select uc-users-filter-select">
+          <option value="All">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
 
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border rounded px-2 py-1">
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+        <select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} className="uc-select uc-users-filter-select">
+          <option value="All">All Branches</option>
+          {BRANCH_OPTIONS.map((b) => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
 
-          <button onClick={() => { setSearchTerm(''); setFilterDept('All'); setFilterPosition('All'); setFilterCompany('All'); setFilterStatus('All'); }} className="px-3 py-1 border rounded text-sm">Reset</button>
+        <button
+          type="button"
+          onClick={() => {
+            setSearchTerm('');
+            setFilterDept('All');
+            setFilterPosition('All');
+            setFilterCompany('All');
+            setFilterStatus('All');
+            setFilterBranch('All');
+          }}
+          className="uc-btn uc-btn-outline uc-users-toolbar-btn"
+        >
+          Reset
+        </button>
 
-          <button
-            type="button"
-            onClick={() => { setPastSearch(''); setShowPastModal(true); }}
-            className="px-3 py-1.5 rounded text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 border-l border-slate-300 ml-1 pl-3"
-          >
-            Past Employees ({users.filter(isPastEmployee).length})
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => { setPastSearch(''); setShowPastModal(true); }}
+          className="uc-btn uc-btn-slate uc-users-toolbar-btn"
+        >
+          Past Employees ({users.filter(isPastEmployee).length})
+        </button>
       </div>
 
-      <div className="shadow border border-gray-200 sm:rounded-lg w-full overflow-hidden">
-          <table className="w-full table-fixed divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="uc-users-table-wrap">
+          <table className="uc-users-table">
+          <thead>
             <tr>
-              <th className="w-12 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
-              <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-              <th className="w-[26%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="w-[18%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dept</th>
-              <th className="w-[20%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-              <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="w-10 px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase" />
+              <th style={{ width: '3rem' }}>S.No</th>
+              <th style={{ width: '12%' }}>ID</th>
+              <th style={{ width: '22%' }}>Name</th>
+              <th style={{ width: '12%' }}>Branch</th>
+              <th style={{ width: '14%' }}>Dept</th>
+              <th style={{ width: '18%' }}>Role</th>
+              <th style={{ width: '10%' }}>Status</th>
+              <th style={{ width: '2.5rem' }} />
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {filteredUsers.map((user, idx) => (
               <tr
                 key={user._id}
-                className={`${user.isActive ? '' : 'opacity-60'} hover:bg-gray-50 cursor-pointer`}
+                className={user.isActive ? '' : 'inactive'}
                 onClick={() => navigate(`/all-users/${user._id}`)}
               >
-                <td className="px-2 py-3 text-sm text-gray-500">{idx + 1}</td>
-                <td className="px-2 py-3 text-sm text-gray-900 truncate" title={user.employeeId}>{user.employeeId || '-'}</td>
-                <td className="px-2 py-3 text-sm font-medium text-gray-900">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <img src={user.profilePic || '/default-avatar.png'} alt={user.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                    <span className="truncate" title={user.name}>{user.name}</span>
-                  </div>
+                <td>{idx + 1}</td>
+                <td title={user.employeeId}>{user.employeeId || '-'}</td>
+                <td style={{ fontWeight: 500 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
+                    <img src={user.profilePic || '/default-avatar.png'} alt={user.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} title={user.name}>{user.name}</span>
+                  </span>
                 </td>
-                <td className="px-2 py-3 text-sm text-gray-500">
-                  <span className="line-clamp-2" title={getPrimaryWork(user).department || user.department}>
+                <td>
+                  {getUserBranch(user) ? (
+                    <span className={branchBadgeClass(getUserBranch(user))} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600 }}>
+                      {getUserBranch(user)}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td title={getPrimaryWork(user).department || user.department}>
                     {getPrimaryWork(user).department || user.department || '-'}
-                    {getUserWorks(user).length > 1 && (
-                      <span className="text-xs text-indigo-600"> +{getUserWorks(user).length - 1}</span>
-                    )}
-                  </span>
+                    {getUserWorks(user).length > 1 && ` +${getUserWorks(user).length - 1}`}
                 </td>
-                <td className="px-2 py-3 text-sm text-gray-500">
-                  <span className="line-clamp-2" title={getPrimaryWork(user).position || user.position}>
+                <td title={getPrimaryWork(user).position || user.position}>
                     {getPrimaryWork(user).position || user.position || '-'}
-                    {getUserWorks(user).length > 1 && (
-                      <span className="text-xs text-indigo-600"> +{getUserWorks(user).length - 1}</span>
-                    )}
-                  </span>
+                    {getUserWorks(user).length > 1 && ` +${getUserWorks(user).length - 1}`}
                 </td>
-                <td className="px-2 py-3 text-sm">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <td>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '2px 8px',
+                    borderRadius: 9999,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    background: user.isActive ? '#dcfce7' : '#fee2e2',
+                    color: user.isActive ? '#166534' : '#991b1b',
+                  }}>
                     {user.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td className="relative px-2 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(openMenuId === user._id ? null : user._id);
-                    }}
-                    className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                    onClick={(e) => toggleActionMenu(e, user)}
+                    className={`uc-menu-trigger${openMenuId === user._id ? ' is-open' : ''}`}
                     aria-label={`Actions for ${user.name}`}
+                    aria-expanded={openMenuId === user._id}
                   >
-                    <MoreVertical className="w-5 h-5" />
+                    <MoreVertical size={18} />
                   </button>
-                  {openMenuId === user._id && (
-                    <div
-                      className="absolute right-2 top-full mt-1 z-30 min-w-[9rem] bg-white border border-gray-200 rounded-lg shadow-lg py-1 text-left"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
-                        onClick={() => {
-                          setOpenMenuId(null);
-                          navigate(`/all-users/${user._id}`);
-                        }}
-                      >
-                        View Profile
-                      </button>
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
-                        onClick={() => {
-                          setOpenMenuId(null);
-                          navigate(`/all-users/${user._id}/edit`);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={updating}
-                        className={`w-full px-3 py-2 text-sm text-left hover:bg-gray-50 disabled:opacity-50 ${
-                          user.isActive ? 'text-red-600' : 'text-green-600'
-                        }`}
-                        onClick={(e) => {
-                          setOpenMenuId(null);
-                          handleToggleStatus(e, user);
-                        }}
-                      >
-                        {user.isActive ? 'Disable' : 'Enable'}
-                      </button>
-                    </div>
-                  )}
                 </td>
               </tr>
             ))}
@@ -337,75 +362,110 @@ const AllUsers = () => {
           </table>
       </div>
 
-      {showPastModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setShowPastModal(false)}
-        >
+      {openMenuId && menuAnchor && menuUser && (
+        <>
+          <div className="uc-dropdown-backdrop" onClick={closeActionMenu} role="presentation" />
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col"
+            className="uc-actions-dropdown"
+            style={{ top: menuAnchor.top, left: menuAnchor.left }}
             onClick={(e) => e.stopPropagation()}
+            role="menu"
           >
-            <div className="flex items-center justify-between border-b px-5 py-4">
+            <button
+              type="button"
+              className="uc-dropdown-item"
+              onClick={() => {
+                closeActionMenu();
+                navigate(`/all-users/${menuUser._id}`);
+              }}
+            >
+              View Profile
+            </button>
+            <button
+              type="button"
+              className="uc-dropdown-item"
+              onClick={() => {
+                closeActionMenu();
+                navigate(`/all-users/${menuUser._id}/edit`);
+              }}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="uc-dropdown-item"
+              disabled={updating}
+              style={{ color: menuUser.isActive ? '#dc2626' : '#16a34a' }}
+              onClick={(e) => {
+                closeActionMenu();
+                handleToggleStatus(e, menuUser);
+              }}
+            >
+              {menuUser.isActive ? 'Disable' : 'Enable'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {showPastModal && (
+        <div className="uc-modal-backdrop" onClick={() => setShowPastModal(false)}>
+          <div className="uc-modal" style={{ maxWidth: '56rem' }} onClick={(e) => e.stopPropagation()}>
+            <div className="uc-modal-header">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Past Employees</h2>
-                <p className="text-sm text-gray-500">Inactive or relieved employees</p>
+                <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Past Employees</h2>
+                <p style={{ margin: '4px 0 0', fontSize: '0.875rem', color: '#6b7280' }}>Inactive or relieved employees</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowPastModal(false)}
-                className="text-gray-500 hover:text-gray-800 text-2xl leading-none px-2"
-                aria-label="Close"
-              >
+              <button type="button" onClick={() => setShowPastModal(false)} className="uc-btn uc-btn-outline" aria-label="Close">
                 &times;
               </button>
             </div>
 
-            <div className="px-5 py-3 border-b">
+            <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
               <input
                 value={pastSearch}
                 onChange={(e) => setPastSearch(e.target.value)}
                 placeholder="Search past employees..."
-                className="w-full border rounded-lg px-3 py-2 text-sm"
+                className="uc-input"
               />
             </div>
 
-            <div className="overflow-y-auto flex-1 px-5 py-4">
+            <div className="uc-modal-body">
               {pastEmployees.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No past employees found.</p>
+                <p className="uc-table-empty">No past employees found.</p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
+                <table className="uc-table">
+                  <thead>
                     <tr>
-                      <th className="text-left py-2 px-2 font-medium text-gray-500">Employee ID</th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-500">Name</th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-500">Department</th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-500">Designation</th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-500">Relieved</th>
-                      <th className="text-left py-2 px-2 font-medium text-gray-500">Action</th>
+                      <th>Employee ID</th>
+                      <th>Name</th>
+                      <th>Department</th>
+                      <th>Designation</th>
+                      <th>Relieved</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {pastEmployees.map((user) => (
                       <tr
                         key={user._id}
-                        className="hover:bg-gray-50 cursor-pointer"
+                        style={{ cursor: 'pointer' }}
                         onClick={() => {
                           setShowPastModal(false);
                           navigate(`/all-users/${user._id}`);
                         }}
                       >
-                        <td className="py-2.5 px-2 font-mono text-gray-800">{user.employeeId || '-'}</td>
-                        <td className="py-2.5 px-2 font-medium text-gray-900">{user.name}</td>
-                        <td className="py-2.5 px-2 text-gray-600">{getPrimaryWork(user).department || user.department || '-'}</td>
-                        <td className="py-2.5 px-2 text-gray-600">{getPrimaryWork(user).position || user.position || '-'}</td>
-                        <td className="py-2.5 px-2 text-gray-600">{formatDate(user.dateOfRelieving)}</td>
-                        <td className="py-2.5 px-2" onClick={(e) => e.stopPropagation()}>
+                        <td>{user.employeeId || '-'}</td>
+                        <td style={{ fontWeight: 500 }}>{user.name}</td>
+                        <td>{getPrimaryWork(user).department || user.department || '-'}</td>
+                        <td>{getPrimaryWork(user).position || user.position || '-'}</td>
+                        <td>{formatDate(user.dateOfRelieving)}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={(e) => handleToggleStatus(e, user)}
                             disabled={updating}
-                            className="px-2 py-1 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                            className="uc-btn uc-btn-primary"
+                            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
                           >
                             Enable
                           </button>

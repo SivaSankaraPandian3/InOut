@@ -44,6 +44,7 @@ export const API_ENDPOINTS = {
   postAttendance: `${BASE_URL}/attendance`,
   getMyAttendance: `${BASE_URL}/attendance/me`,
   getLastAttendanceGlobal: `${BASE_URL}/attendance/last`,
+  getLastAttendance: `${BASE_URL}/attendance/last`,
   getAttendanceAll: `${BASE_URL}/attendance/all`,
   getAttendanceByDate: (date) => `${BASE_URL}/attendance/date/${date}`,
   getAttendanceByUser: (userId) => `${BASE_URL}/attendance/user/${userId}`,
@@ -62,6 +63,7 @@ export const API_ENDPOINTS = {
   // Pending Users
   // -----------------
   pendingUsers: `${BASE_URL}/api/admin/pending-users`,
+  createUser: `${BASE_URL}/api/admin/create-user`,
   approveUser: `${BASE_URL}/api/admin/approve`,     // Use: `${approveUser}/${userId}`
   rejectUser: `${BASE_URL}/api/admin/reject`,       // Use: `${rejectUser}/${userId}`
 
