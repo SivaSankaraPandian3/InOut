@@ -41,7 +41,7 @@ import InternshipOfferLetter from './pages/admin/InternshipOfferLetter';
 import AllLetters from './pages/admin/AllLetters';
 import ProtectedRoute from './components/ProtectedRoute';
 import PendingUsers from './pages/admin/PendingUsers';
-import ApiDocsPage from './pages/ApiDocsPage';
+import ApiDocsPage from './pages/admin/ApiDocsPage';
 
 function App() {
   //  const navigate = useNavigate();
@@ -108,6 +108,8 @@ function App() {
           <Route path="/payslip" element={<PayslipGenerator />} />
           <Route path="/leave-requests" element={<LeaveRequestsAdmin />} />
           <Route path="/coming-soon/*" element={<ComingSoon/>}/>
+          <Route path="/api-docs" element={<ApiDocsPage />} />
+          <Route path="/swagger" element={<ApiDocsPage />} />
           {/* Add other admin routes here */}
           <Route path="/edit-user" element={<EditUser />} />
         </Route>

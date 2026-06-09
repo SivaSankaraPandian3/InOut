@@ -44,8 +44,11 @@ const menuItems = [
   { label: 'Pay History', icon: <FiDollarSign />, path: '/salaryhistory' },
   { label: 'Payslip Generator', icon: <FiBarChart2 />, path: '/payslip' },
   { label: 'Holiday List', icon: <FiCalendar />, path: '/holidays' },
+  { label: 'API Docs', icon: <FiFileText />, path: '/api-docs' },
   { label: 'Settings', icon: <FiSettings />, path: '/coming-soon/settings' }
 ];
+
+export const APP_BUILD = 'v2026.06.09';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   // Open the 'Documents', 'Leaves & Lates', and 'User Management' submenus by default
@@ -72,6 +75,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       <aside className={`admin-sidebar ${isOpen ? 'is-open' : ''}`}>
         <div className="admin-sidebar-brand">
           INOUT HR Portal
+          <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 500, opacity: 0.75, marginTop: 2 }}>
+            {APP_BUILD}
+          </span>
         </div>
 
         <nav className="admin-sidebar-nav">

@@ -221,12 +221,14 @@ const AllUsers = () => {
         <h1 className="uc-page-title" style={{ margin: 0 }}>All Users</h1>
         <button
           type="button"
-          className="uc-btn uc-btn-primary uc-btn-icon-circle"
+          className="uc-btn uc-btn-primary"
           onClick={() => navigate('/add-user')}
           title="Add User"
           aria-label="Add User"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <UserPlus size={16} strokeWidth={2.5} />
+          Add User
         </button>
       </div>
 
