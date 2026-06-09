@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import { MoreVertical, UserPlus } from 'lucide-react';
 import { API_ENDPOINTS } from '../../utils/api';
 // UserCard is used on the dedicated user detail page now
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Loader from '../../components/admin-dashboard/common/Loader';
 import { getPrimaryWork, getUserWorks } from '../../utils/userWorks';
 import { BRANCH_OPTIONS, getUserBranch, matchesBranchFilter, branchBadgeClass } from '../../utils/branches';
@@ -18,6 +18,7 @@ const AllUsers = () => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
   const [filterPosition, setFilterPosition] = useState('All');
@@ -42,7 +43,7 @@ const AllUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [location.key]);
 
   const closeActionMenu = () => {
     setOpenMenuId(null);

@@ -101,15 +101,24 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
       const payload = buildUserUpdatePayload(form);
-      const { data: updated } = await axios.put(API_ENDPOINTS.updateUser(userId), payload, { headers });
+      const { data } = await axios.put(API_ENDPOINTS.updateUser(userId), payload, { headers });
+      const updated = data?.user ?? data;
       const savedBranch = extractBranchFromUser(updated);
       const expectedBranch = payload.branch || '';
       if (expectedBranch && savedBranch !== expectedBranch) {
         console.warn('Branch may not have persisted on server:', { expectedBranch, savedBranch });
       }
-      Swal.fire('Success', 'User updated successfully', 'success');
+      if (expectedBranch && savedBranch !== expectedBranch) {
+        Swal.fire(
+          'Partial save',
+          'Profile updated, but branch was not saved on the server. Deploy the latest backend and try again.',
+          'warning'
+        );
+      } else {
+        Swal.fire('Success', 'User updated successfully', 'success');
+      }
       onUpdated?.();
-      if (isPage) navigate(-1);
+      if (isPage) navigate('/all-users');
       else onClose?.();
     } catch (err) {
       console.error(err);
