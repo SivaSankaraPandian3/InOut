@@ -101,10 +101,10 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
       const payload = buildUserUpdatePayload(form);
-      await axios.put(API_ENDPOINTS.updateUser(userId), payload, { headers });
+      const { data } = await axios.put(API_ENDPOINTS.updateUser(userId), payload, { headers });
       Swal.fire('Success', 'User updated successfully', 'success');
-      onUpdated?.();
-      if (isPage) navigate('/all-users');
+      onUpdated?.(data?.user);
+      if (isPage) navigate('/all-users', { state: { userListRefresh: Date.now() } });
       else onClose?.();
     } catch (err) {
       console.error(err);

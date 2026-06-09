@@ -48,8 +48,9 @@ const AllUsers = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchUsers();
-  }, [location.key]);
+  }, [location.key, location.state?.userListRefresh]);
 
   const closeActionMenu = () => {
     setOpenMenuId(null);

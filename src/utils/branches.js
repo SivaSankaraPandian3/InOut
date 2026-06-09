@@ -22,6 +22,12 @@ export const buildUserUpdatePayload = (form) => {
   const addressIsBranch = !!normalizeBranchValue(existingAddress);
   const hasRealAddress =
     existingAddress && !addressIsBranch && existingAddress.toLowerCase() !== 'n/a';
+  // Legacy Render API ignores branch/works — persist branch via address until backend redeploys.
+  const addressForApi = branch
+    ? hasRealAddress
+      ? `${branch} | ${existingAddress}`
+      : branch
+    : existingAddress || undefined;
 
   return {
     name: synced.name || '',
@@ -38,7 +44,7 @@ export const buildUserUpdatePayload = (form) => {
     dateOfJoining: synced.dateOfJoining || undefined,
     dateOfRelieving: synced.dateOfRelieving || null,
     dateOfBirth: synced.dateOfBirth || undefined,
-    address: branch && !hasRealAddress ? branch : existingAddress || undefined,
+    address: addressForApi,
     profilePic: synced.profilePic || '',
     skills: Array.isArray(synced.skills) ? synced.skills : [],
     rolesAndResponsibility: Array.isArray(synced.rolesAndResponsibility)
@@ -78,7 +84,9 @@ export const isPhysicalOfficePresent = (officeName) => {
 
 export const normalizeBranchValue = (value) => {
   if (!value) return '';
-  const lower = String(value).trim().toLowerCase();
+  const raw = String(value).trim();
+  const branchPrefix = raw.split('|')[0].trim();
+  const lower = branchPrefix.toLowerCase();
   if (lower.includes('tirunel') || lower === 'tvl') return 'Tirunelveli';
   if (lower.includes('pallikar')) return 'Chennai Pallikarani';
   if (lower.includes('velach') || lower.includes('velech') || lower === 'velachery') return 'Chennai Velachery';
