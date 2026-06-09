@@ -468,6 +468,41 @@
   opacity: 0.6;
 }
 
+.uc-users-table td.uc-users-branch-cell {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.uc-branch-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.uc-branch-pallikarani {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.uc-branch-velachery {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.uc-branch-tirunelveli {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.uc-branch-default {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
 .uc-text-green { color: #16a34a; }
 .uc-text-blue { color: #2563eb; }
 .uc-text-red { color: #dc2626; }

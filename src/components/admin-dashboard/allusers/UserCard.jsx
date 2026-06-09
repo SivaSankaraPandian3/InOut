@@ -146,14 +146,7 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
           {getUserBranch(user) && (
             <span
               className={branchBadgeClass(getUserBranch(user))}
-              style={{
-                display: 'inline-block',
-                marginTop: 8,
-                padding: '4px 10px',
-                borderRadius: 9999,
-                fontSize: '0.75rem',
-                fontWeight: 600,
-              }}
+              style={{ marginTop: 8 }}
             >
               {getUserBranch(user)}
             </span>

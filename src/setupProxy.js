@@ -6,11 +6,14 @@ module.exports = function (app) {
       [
         '/auth',
         '/api',
+        '/api-docs',
         '/users',
         '/attendance',
         '/schedules',
         '/employeesAttendance',
         '/uploads',
+        '/ping',
+        '/version',
       ],
       {
         target: 'https://uc-attendance-system-1ts2.onrender.com',

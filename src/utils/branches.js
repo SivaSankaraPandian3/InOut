@@ -116,11 +116,19 @@ export const matchesBranchFilter = (user, filterBranch) => {
   return getUserBranch(user) === filterBranch;
 };
 
+/** Compact label for table cells; full name available via title/tooltip. */
+export const getBranchShortLabel = (branch) => {
+  if (branch === 'Chennai Pallikarani') return 'Pallikarani';
+  if (branch === 'Chennai Velachery') return 'Velachery';
+  if (branch === 'Tirunelveli') return 'Tirunelveli';
+  return branch || '';
+};
+
 export const branchBadgeClass = (branch) => {
-  if (branch === 'Chennai Pallikarani') return 'bg-green-100 text-green-800';
-  if (branch === 'Chennai Velachery') return 'bg-blue-100 text-blue-800';
-  if (branch === 'Tirunelveli') return 'bg-amber-100 text-amber-900';
-  return 'bg-gray-100 text-gray-600';
+  if (branch === 'Chennai Pallikarani') return 'uc-branch-badge uc-branch-pallikarani';
+  if (branch === 'Chennai Velachery') return 'uc-branch-badge uc-branch-velachery';
+  if (branch === 'Tirunelveli') return 'uc-branch-badge uc-branch-tirunelveli';
+  return 'uc-branch-badge uc-branch-default';
 };
 
 export const findUserForAttendanceLog = (log, allUsers = []) => {

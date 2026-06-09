@@ -7,7 +7,13 @@ import { API_ENDPOINTS } from '../../utils/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Loader from '../../components/admin-dashboard/common/Loader';
 import { getPrimaryWork, getUserWorks } from '../../utils/userWorks';
-import { BRANCH_OPTIONS, getUserBranch, matchesBranchFilter, branchBadgeClass } from '../../utils/branches';
+import {
+  BRANCH_OPTIONS,
+  getUserBranch,
+  getBranchShortLabel,
+  matchesBranchFilter,
+  branchBadgeClass,
+} from '../../utils/branches';
 
 const AllUsers = () => {
   const [users, setUsers] = useState([]);
@@ -316,10 +322,13 @@ const AllUsers = () => {
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} title={user.name}>{user.name}</span>
                   </span>
                 </td>
-                <td>
+                <td className="uc-users-branch-cell">
                   {getUserBranch(user) ? (
-                    <span className={branchBadgeClass(getUserBranch(user))} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600 }}>
-                      {getUserBranch(user)}
+                    <span
+                      className={branchBadgeClass(getUserBranch(user))}
+                      title={getUserBranch(user)}
+                    >
+                      {getBranchShortLabel(getUserBranch(user))}
                     </span>
                   ) : (
                     '—'
