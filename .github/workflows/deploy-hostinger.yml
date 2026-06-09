@@ -1,0 +1,63 @@
+name: Deploy Frontend to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hostinger
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          CI: false
+
+      - name: Resolve FTP upload directory
+        id: ftpdir
+        run: |
+          if [ -n "${{ secrets.FTP_SERVER_DIR }}" ]; then
+            echo "dir=${{ secrets.FTP_SERVER_DIR }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=/public_html/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Hostinger (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./build/
+          server-dir: ${{ steps.ftpdir.outputs.dir }}
+          dangerous-clean-slate: true
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+
+      - name: Verify live deploy check page
+        continue-on-error: true
+        run: |
+          sleep 20
+          curl -fsS "https://inout.urbancode.tech/deploy-check.html" | grep -q "New build deployed"
+          echo "Live site updated successfully."
