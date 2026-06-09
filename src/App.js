@@ -41,6 +41,7 @@ import InternshipOfferLetter from './pages/admin/InternshipOfferLetter';
 import AllLetters from './pages/admin/AllLetters';
 import ProtectedRoute from './components/ProtectedRoute';
 import PendingUsers from './pages/admin/PendingUsers';
+import ApiDocsPage from './pages/ApiDocsPage';
 
 function App() {
   //  const navigate = useNavigate();
@@ -78,7 +79,8 @@ function App() {
         <Route path="/apply-leave" element={<Leave />} />
         <Route path="/task-manager" element={<TaskManagerPage />} />
         <Route path="/profile" element={<ProfileCard/>} />
-        
+        <Route path="/swagger.html" element={<ApiDocsPage />} />
+        <Route path="/api-docs" element={<ApiDocsPage />} />
 
         {/* Protected Admin Layout Wrapper */}
         <Route element={

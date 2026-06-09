@@ -9,6 +9,7 @@ import Loader from '../../components/admin-dashboard/common/Loader';
 import { getPrimaryWork, getUserWorks } from '../../utils/userWorks';
 import {
   BRANCH_OPTIONS,
+  buildUserUpdatePayload,
   getUserBranch,
   getBranchShortLabel,
   matchesBranchFilter,
@@ -92,12 +93,15 @@ const AllUsers = () => {
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   });
 
-  const updateUserStatus = async (userId, isActive) => {
-    await axios.put(
-      API_ENDPOINTS.updateUser(userId),
-      { isActive },
-      { headers: getAuthHeaders() }
-    );
+  const updateUserStatus = async (user, isActive) => {
+    const headers = getAuthHeaders();
+    const { data: fullUser } = await axios.get(API_ENDPOINTS.getUserById(user._id), { headers });
+    const payload = buildUserUpdatePayload({
+      ...fullUser,
+      isActive,
+      ...(isActive ? { dateOfRelieving: null } : {}),
+    });
+    await axios.put(API_ENDPOINTS.updateUser(user._id), payload, { headers });
   };
 
   const handleToggleStatus = async (e, user) => {
@@ -118,14 +122,22 @@ const AllUsers = () => {
 
     try {
       setUpdating(true);
-      await updateUserStatus(user._id, nextActive);
+      await updateUserStatus(user, nextActive);
       setUsers((prev) =>
-        prev.map((u) => (u._id === user._id ? { ...u, isActive: nextActive } : u))
+        prev.map((u) =>
+          u._id === user._id
+            ? { ...u, isActive: nextActive, ...(nextActive ? { dateOfRelieving: null } : {}) }
+            : u
+        )
       );
       Swal.fire('Success', `User ${actionLabel}d successfully.`, 'success');
     } catch (error) {
       console.error('Failed to update user status:', error);
-      Swal.fire('Error', `Could not ${actionLabel} user.`, 'error');
+      const apiMsg =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.response?.data?.msg;
+      Swal.fire('Error', apiMsg || `Could not ${actionLabel} user.`, 'error');
     } finally {
       setUpdating(false);
     }
