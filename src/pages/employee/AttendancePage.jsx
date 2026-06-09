@@ -15,7 +15,7 @@ import ActivityLog from "../../components/attendance/ActivityLog";
 import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
 import { appendAttendanceImage } from "../../utils/attendanceImage";
-import { resolveOfficeFromLocation } from "../../utils/officeLocations";
+import { resolveOfficeFromLocation, branchToOfficeName } from "../../utils/officeLocations";
 
 function AttendancePage() {
   const navigate = useNavigate();
@@ -54,11 +54,7 @@ function AttendancePage() {
           : API_ENDPOINTS.getUserById(userId),
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setUser({
-        name: res.data.name,
-        position: res.data.position,
-        company: res.data.company,
-      });
+      setUser(res.data);
     } catch (err) {
       // Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to load user info' });
     }
@@ -106,7 +102,7 @@ function AttendancePage() {
       (pos) => {
         const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
         setLocation(coords);
-        setDetectedOffice(resolveOfficeFromLocation(coords));
+        setDetectedOffice(resolveOfficeFromLocation(coords, branchToOfficeName(user)));
       },
       () =>
         Swal.fire({
