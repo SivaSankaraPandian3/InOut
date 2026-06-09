@@ -76,6 +76,7 @@ export const isPhysicalOfficePresent = (officeName) => {
   const o = String(officeName).toLowerCase();
   return (
     o.includes('velechery') ||
+    o.includes('velachery') ||
     o.includes('pallikaranai') ||
     o.includes('tirunelveli') ||
     o.includes('tvl')

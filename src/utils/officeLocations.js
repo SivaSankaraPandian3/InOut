@@ -2,18 +2,21 @@
 export const OFFICE_LOCATIONS = [
   {
     name: 'Pallikaranai',
+    branchName: 'Chennai Pallikarani',
     latitude: 12.94198577,
     longitude: 80.21012198,
     radiusMeters: 200,
   },
   {
     name: 'Velechery',
+    branchName: 'Chennai Velachery',
     latitude: 12.9912597,
     longitude: 80.2201616,
     radiusMeters: 400,
   },
   {
     name: 'Tirunelveli',
+    branchName: 'Tirunelveli',
     latitude: 8.6988125,
     longitude: 77.7269375,
     radiusMeters: 500,
@@ -35,37 +38,27 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
   return 2 * R * Math.asin(Math.sqrt(a));
 };
 
-/** Parse "lat,lng" and return nearest office within radius, or null. */
-export const resolveOfficeFromLocation = (locationString, preferredOfficeName = null) => {
+/** Within branch radius → branch name; otherwise Outside Office. */
+export const resolveOfficeFromLocation = (locationString) => {
   if (!locationString || !String(locationString).includes(',')) return null;
   const [lat, lon] = String(locationString).split(',').map(Number);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
-  const ordered = preferredOfficeName
-    ? [
-        ...OFFICE_LOCATIONS.filter((o) => o.name === preferredOfficeName),
-        ...OFFICE_LOCATIONS.filter((o) => o.name !== preferredOfficeName),
-      ]
-    : OFFICE_LOCATIONS;
+  let best = null;
 
-  for (const office of ordered) {
+  for (const office of OFFICE_LOCATIONS) {
     const distance = haversineMeters(lat, lon, office.latitude, office.longitude);
-    const boost = office.name === preferredOfficeName ? 1.5 : 1;
-    if (distance <= office.radiusMeters * boost) {
-      return { officeName: office.name, isInOffice: true, distanceMeters: Math.round(distance) };
+    if (distance <= office.radiusMeters) {
+      if (!best || distance < best.distanceMeters) {
+        best = {
+          officeName: office.branchName || office.name,
+          isInOffice: true,
+          distanceMeters: Math.round(distance),
+        };
+      }
     }
   }
-  return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
-};
 
-/** Map user profile branch to office config name (preview on check-in screen). */
-export const branchToOfficeName = (user) => {
-  const raw = [user?.branch, user?.bankDetails?.officeBranch, user?.address]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  if (raw.includes('tirunel') || raw.includes('tvl')) return 'Tirunelveli';
-  if (raw.includes('pallikar')) return 'Pallikaranai';
-  if (raw.includes('velach') || raw.includes('velech')) return 'Velechery';
-  return null;
+  if (best) return best;
+  return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
 };

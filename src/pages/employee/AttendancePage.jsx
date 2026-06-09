@@ -15,7 +15,7 @@ import ActivityLog from "../../components/attendance/ActivityLog";
 import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
 import { appendAttendanceImage } from "../../utils/attendanceImage";
-import { resolveOfficeFromLocation, branchToOfficeName } from "../../utils/officeLocations";
+import { resolveOfficeFromLocation } from "../../utils/officeLocations";
 
 function AttendancePage() {
   const navigate = useNavigate();
@@ -102,7 +102,7 @@ function AttendancePage() {
       (pos) => {
         const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
         setLocation(coords);
-        setDetectedOffice(resolveOfficeFromLocation(coords, branchToOfficeName(user)));
+        setDetectedOffice(resolveOfficeFromLocation(coords));
       },
       () =>
         Swal.fire({
