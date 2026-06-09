@@ -1,70 +1,96 @@
-# Deploy Setup — INOUT
+# Git Deploy Setup — INOUT
 
-Automatic deploy uses **GitHub Actions**. One-time secret setup pannunga; apram `main` branch-ku push panna live update aagum.
+`main` branch-ku **git push** panna automatic deploy aagum (GitHub Actions).
 
-## 1. Frontend → Hostinger (`InOut` repo)
+> **Last runs failed** because GitHub Secrets add pannala. Below secrets setup pannunga, apram push or **Run workflow**.
 
-### GitHub Secrets add pannunga
+---
 
-Repo: **https://github.com/ucattendance/InOut** → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+## Step 0 — One-time secrets (required)
 
-| Secret | Value (Hostinger hPanel-la edukkunga) |
-|--------|----------------------------------------|
-| `FTP_SERVER` | FTP hostname (e.g. `ftp.inout.urbancode.tech` or `files000.hostinger.com`) |
+### Frontend (`InOut` repo)
+
+Open: **https://github.com/ucattendance/InOut/settings/secrets/actions**
+
+| Secret name | Value |
+|-------------|--------|
+| `FTP_SERVER` | Hostinger FTP hostname (hPanel → FTP Accounts) |
 | `FTP_USERNAME` | FTP username |
 | `FTP_PASSWORD` | FTP password |
-| `FTP_SERVER_DIR` | Upload folder — usually `/public_html/` or `/domains/inout.urbancode.tech/public_html/` |
+| `FTP_SERVER_DIR` | `/public_html/` or `/domains/inout.urbancode.tech/public_html/` |
 
-**FTP details:** hPanel → **Files** → **FTP Accounts** (or **Hosting** → **Manage** → **FTP Accounts**)
+### Backend (`InOut-backend` repo)
 
-### Auto deploy
+**Option A — Render Deploy Hook (GitHub Actions)**
 
-- `main` branch-ku push → build + FTP upload
-- Manual: GitHub → **Actions** → **Deploy Frontend to Hostinger** → **Run workflow**
+Open: **https://github.com/ucattendance/InOut-backend/settings/secrets/actions**
 
-### Verify
+| Secret name | Value |
+|-------------|--------|
+| `RENDER_DEPLOY_HOOK` | Render → service → Settings → Deploy Hook URL |
 
-- https://inout.urbancode.tech/deploy-check.html — green success message
-- Sidebar-la **v2026.06.09** kaatum
-- All Users-la **Branch** column + **Add User** button
-- https://inout.urbancode.tech/api-docs — Swagger UI
+**Option B — Render GitHub connect (recommended)**
 
----
-
-## 2. Backend → Render (`InOut-backend` repo)
-
-### Render Deploy Hook
-
-1. [Render Dashboard](https://dashboard.render.com) → service `uc-attendance-system-1ts2`
-2. **Settings** → **Deploy Hook** → copy URL
-
-### GitHub Secret
-
-Repo: **https://github.com/ucattendance/InOut-backend** → **Settings** → **Secrets** → add:
-
-| Secret | Value |
-|--------|--------|
-| `RENDER_DEPLOY_HOOK` | Deploy hook URL from Render |
-
-### Auto deploy
-
-- `main` push → Render redeploy trigger
-- Manual: **Actions** → **Deploy Backend to Render** → **Run workflow**
-
-### Verify
-
-- https://uc-attendance-system-1ts2.onrender.com/ping → `pong`
-- https://uc-attendance-system-1ts2.onrender.com/api-docs → Swagger UI
-- https://uc-attendance-system-1ts2.onrender.com/version → `{"build":"swagger-v1"}`
+Render Dashboard → `uc-attendance-system-1ts2` → Settings → connect repo `ucattendance/InOut-backend` branch `main`.  
+Then every `git push` auto-deploys without the hook secret.
 
 ---
 
-## 3. Local manual pack (backup)
+## Step 1 — Deploy via git push
+
+```powershell
+# Frontend → Hostinger
+cd c:\Users\nagus\OneDrive\Desktop\InOut
+git add .
+git commit -m "your message"
+git push origin main
+
+# Backend → Render
+cd c:\Users\nagus\OneDrive\Desktop\InOut-backend
+git add .
+git commit -m "your message"
+git push origin main
+```
+
+---
+
+## Step 2 — Manual run (without new commit)
+
+- Frontend: https://github.com/ucattendance/InOut/actions/workflows/deploy-hostinger.yml → **Run workflow**
+- Backend: https://github.com/ucattendance/InOut-backend/actions/workflows/deploy-render.yml → **Run workflow**
+
+---
+
+## Step 3 — Verify live
+
+| Check | URL |
+|-------|-----|
+| Frontend deploy | https://inout.urbancode.tech/deploy-check.html |
+| Build version | Sidebar **v2026.06.09** |
+| API docs | https://inout.urbancode.tech/api-docs |
+| Backend ping | https://uc-attendance-system-1ts2.onrender.com/ping |
+| Backend Swagger | https://uc-attendance-system-1ts2.onrender.com/api-docs |
+
+Dashboard-la **Refresh Data** click pannunga (cache clear).
+
+---
+
+## Troubleshooting
+
+| Error | Fix |
+|-------|-----|
+| `Missing secret FTP_SERVER` | Add Hostinger FTP secrets (Step 0) |
+| `RENDER_DEPLOY_HOOK secret is not set` | Add hook URL or use Render GitHub connect |
+| Live site still old | Check Actions run is green; hard refresh Ctrl+Shift+R |
+| FTP deploy fails | Try `FTP_SERVER_DIR` = `/domains/inout.urbancode.tech/public_html/` |
+
+---
+
+## Backup — manual zip
 
 ```powershell
 cd InOut
-npm run build
 npm run deploy:pack
 ```
 
-Creates `InOut-deploy.zip` on Desktop for manual Hostinger upload.
+Upload `Desktop\InOut-deploy.zip` to Hostinger `public_html`.

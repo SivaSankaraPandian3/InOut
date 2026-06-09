@@ -30,6 +30,14 @@ jobs:
         env:
           CI: false
 
+      - name: Validate FTP secrets
+        run: |
+          missing=0
+          if [ -z "${{ secrets.FTP_SERVER }}" ]; then echo "::error::Missing secret FTP_SERVER — GitHub → Settings → Secrets → Actions"; missing=1; fi
+          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then echo "::error::Missing secret FTP_USERNAME"; missing=1; fi
+          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "::error::Missing secret FTP_PASSWORD"; missing=1; fi
+          if [ "$missing" -eq 1 ]; then exit 1; fi
+
       - name: Resolve FTP upload directory
         id: ftpdir
         run: |
