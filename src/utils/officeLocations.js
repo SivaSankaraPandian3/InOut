@@ -19,7 +19,7 @@ export const OFFICE_LOCATIONS = [
     branchName: 'Tirunelveli',
     latitude: 8.6988125,
     longitude: 77.7269375,
-    radiusMeters: 500,
+    radiusMeters: 750,
     address:
       '3rd Floor, Fab Sapphire Towers, 29/5, S Bypass Rd, Vasanth Nagar, Tirunelveli, Tamil Nadu 627005',
     plusCode: 'MPXG+GQ Tirunelveli',
@@ -61,4 +61,14 @@ export const resolveOfficeFromLocation = (locationString) => {
 
   if (best) return best;
   return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
+};
+
+/** Dashboard / reports: prefer GPS-based branch when coordinates exist. */
+export const getLogOfficeName = (log) => {
+  if (!log) return '—';
+  if (log.location) {
+    const resolved = resolveOfficeFromLocation(log.location);
+    if (resolved?.isInOffice) return resolved.officeName;
+  }
+  return log.officeName || '—';
 };

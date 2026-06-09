@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { officePresentBadgeClass } from "../../../utils/branches";
+import { getLogOfficeName } from "../../../utils/officeLocations";
 import {
   getAttendanceImage,
   resolveAttendanceImageUrl,
@@ -91,14 +92,24 @@ const RecentAttendanceTable = ({ logs = [] }) => {
                     : "—"}
                 </td>
                 <td>
-                  <span className={officePresentBadgeClass(entry.checkIn?.officeName)}>
-                    {entry.checkIn?.officeName || "—"}
-                  </span>
+                  {(() => {
+                    const name = getLogOfficeName(entry.checkIn);
+                    return (
+                      <span className={officePresentBadgeClass(name)}>
+                        {name}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td>
-                  <span className={officePresentBadgeClass(entry.checkOut?.officeName)}>
-                    {entry.checkOut?.officeName || "—"}
-                  </span>
+                  {(() => {
+                    const name = getLogOfficeName(entry.checkOut);
+                    return (
+                      <span className={officePresentBadgeClass(name)}>
+                        {name}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td>
                   {(() => {
