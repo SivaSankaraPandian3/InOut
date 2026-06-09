@@ -22,7 +22,15 @@ import letterheadUrl from '../../assets/letterhead.pdf';
 import Swal from 'sweetalert2';
 import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
 
-const SIGN_OFF_TOP = 212;
+const SIGN_OFF_GAP = 14;
+const MIN_PAGE_BOTTOM = 88;
+
+const stripSignOffFromBody = (text) => {
+  const lines = text.split('\n');
+  const signOffIndex = lines.findIndex((line) => /^\s*(\*\*)?warm\s+regards?,?(\*\*)?\s*$/i.test(line.trim()));
+  if (signOffIndex >= 0) return lines.slice(0, signOffIndex).join('\n').trimEnd();
+  return text;
+};
 
 const OfferLetters = () => {
   const [candidates, setCandidates] = useState([]);
@@ -50,25 +58,25 @@ const OfferLetters = () => {
 {{addressLine1}},
 {{addressLine2}}.
 
-**Subject: Offer Letter for {{designation}} Position**
+**Subject: Offer Letter for the Position of {{designation}}**
 
 **Dear {{name}},**
 
-Ungalukku **{{company}}** la **{{designation}}** role-ku offer kudukkirathil romba sandhosham. Ungaloda skills, experience, interview performance ellam paathu, neenga namma team-ku nalla value add pannuveenga-nu nambrom.
+We are pleased to offer you the position of **{{designation}}** at **{{company}}**. Based on your qualifications, experience, and performance during the selection process, we believe that you will be a valuable addition to our team.
 
-Ungal employment **{{joiningDate}}** la start aagum. Andha naal la management/reporting authority kitta report panna vendum. Indha role-kku annual salary **{{salary}}** kudukkappadum, adoda company policy prakaram vera benefits-um apply aagum.
+Your employment with **{{company}}** will commence on **{{joiningDate}}**. On your joining date, you will be required to report to your designated reporting manager or management representative. Your annual compensation for this position will be **{{salary}}**, along with other benefits and entitlements as per the company's policies.
 
-Ungal roles and responsibilities-ah reporting manager detail-a explain pannuvanga. Neenga dedication-oda, professionalism-oda, integrity-oda work panna vendum. Company policies, rules, regulations ellathayum follow panna vendum.
+Your roles and responsibilities will be communicated in detail by your reporting manager. We expect you to perform your duties with dedication, professionalism, and integrity while adhering to all company policies, rules, and regulations.
 
-Indha offer, neenga hiring process la submit panna documents and credentials successful verification-ku subject a irukkum.
+This offer of employment is subject to the successful verification of all documents, credentials, and information provided by you during the recruitment process.
 
-Neenga **{{company}}** la work pannum time la, company information, internal process, client data pathi strict confidentiality maintain panna vendum. Confidentiality/professional conduct breach nadantha disciplinary action, including termination, edukka mudiyum.
+During your employment with **{{company}}**, you will be required to maintain strict confidentiality regarding company information, internal processes, client data, and any other proprietary information. Any breach of confidentiality or professional conduct may result in disciplinary action, including termination of employment.
 
-Indha offer-ai accept panringa-na, signed copy return pannunga illa email moolama joining date-ku munadi confirm pannunga.
+To confirm your acceptance of this offer, please sign and return a copy of this letter or provide your confirmation via email before your joining date.
 
-Nanga ungala **{{company}}** family-ku welcome panradhukku eager-a irukkom. Ungal career journey successful-a irukka vaalthukkal.
+We are excited to welcome you to the **{{company}}** team and look forward to your contributions and success with us. We wish you a rewarding and successful career journey ahead.
 
-Doubts irundha Founder-ah reach pannunga.`);
+If you have any questions or require further clarification, please feel free to contact the Founder.`);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -181,16 +189,37 @@ Doubts irundha Founder-ah reach pannunga.`);
     return normalizeLetterLines(sanitizeBoldMarkers(replaced));
   };
 
-  const drawSignOffBlock = async (page, pdfDoc, fontRegular, fontBold, fontSize) => {
+  const drawSignOffBlock = async (page, pdfDoc, fontRegular, fontBold, fontSize, startY) => {
     const x = 40;
+    const lineHeight = fontSize + 1.5;
     const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);
     const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
     const founderName = form.founderName?.trim() || 'Sivagaminathan';
+    const company = form.company?.trim() || '';
 
-    page.drawText('Warm regards,', { x, y: 200, size: fontSize, font: fontRegular, color: bodyColor });
-    page.drawText('Founder', { x, y: 184, size: fontSize, font: fontRegular, color: bodyColor });
-    page.drawText(founderName, { x, y: 168, size: fontSize, font: fontBold, color: titleColor });
+    let y = startY;
 
+    // 1. Warm Regards,
+    page.drawText('Warm Regards,', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+    y -= lineHeight + 4;
+
+    // 2. Sivagaminathan
+    page.drawText(founderName, { x, y, size: fontSize, font: fontBold, color: titleColor });
+    y -= lineHeight;
+
+    // 3. Founder
+    page.drawText('Founder', { x, y, size: fontSize, font: fontBold, color: titleColor });
+    y -= lineHeight;
+
+    // 4. Urbancode (company)
+    if (company) {
+      page.drawText(company, { x, y, size: fontSize, font: fontBold, color: titleColor });
+      y -= lineHeight;
+    }
+
+    y -= 6;
+
+    // 5. Signature (last)
     if (signatureBytes && signatureFile) {
       try {
         const sigUint8 = new Uint8Array(signatureBytes);
@@ -198,20 +227,23 @@ Doubts irundha Founder-ah reach pannunga.`);
           ? await pdfDoc.embedPng(sigUint8)
           : await pdfDoc.embedJpg(sigUint8);
 
-        const maxSigWidth = 150;
-        const maxSigHeight = 56;
+        const maxSigWidth = 120;
+        const maxSigHeight = 48;
         const scale = Math.min(1, maxSigWidth / (embeddedSig.width || 1), maxSigHeight / (embeddedSig.height || 1));
         const sigDims = embeddedSig.scale(scale);
 
         page.drawImage(embeddedSig, {
           x,
-          y: 118,
+          y: y - sigDims.height,
           width: sigDims.width,
           height: sigDims.height,
         });
       } catch (sigErr) {
         console.error('Signature embed error', sigErr);
+        page.drawText('Signature', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
       }
+    } else {
+      page.drawText('Signature', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
     }
   };
 
@@ -239,10 +271,13 @@ Doubts irundha Founder-ah reach pannunga.`);
       const margins = { top: 132, left: 40, right: 50 };
       const contentTop = height - margins.top;
       const contentWidth = width - margins.left - margins.right;
-      const headerBlockHeight = 42;
-      const maxBodyHeight = contentTop - SIGN_OFF_TOP - headerBlockHeight;
+      const titleSize = 14;
+      const titleY = contentTop - titleSize - 8;
+      const bodyStartY = titleY - 10;
+      const signOffReserve = signatureBytes ? 140 : 92;
+      const maxBodyHeight = bodyStartY - MIN_PAGE_BOTTOM - signOffReserve - SIGN_OFF_GAP;
 
-      const finalBody = replacePlaceholders(body, form);
+      const finalBody = stripSignOffFromBody(replacePlaceholders(body, form));
       const sourceLines = finalBody.split('\n');
 
       const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
@@ -356,16 +391,13 @@ Doubts irundha Founder-ah reach pannunga.`);
       page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
 
       const title = titleText || '';
-      const titleSize = 14;
       const titleWidth = fontBold.widthOfTextAtSize(title, titleSize);
       const titleX = margins.left + (contentWidth - titleWidth) / 2;
-      const titleY = contentTop - titleSize - 8;
       page.drawText(title, { x: titleX, y: titleY, size: titleSize, font: fontBold, color: titleColor });
 
-      let cursorY = titleY - 10;
+      let cursorY = bodyStartY;
 
       for (const vl of visualLines) {
-        if (cursorY < SIGN_OFF_TOP) break;
         if (vl.isParagraphBreak) {
           cursorY -= paragraphGap;
           continue;
@@ -394,7 +426,7 @@ Doubts irundha Founder-ah reach pannunga.`);
         cursorY -= lineHeight;
       }
 
-      await drawSignOffBlock(page, pdfDoc, fontRegular, fontBold, fontSize);
+      await drawSignOffBlock(page, pdfDoc, fontRegular, fontBold, fontSize, cursorY - SIGN_OFF_GAP);
       await shrinkLetterheadPhoneIconOnAllPages(pdfDoc);
 
       const pdfBytes = await pdfDoc.save();

@@ -497,10 +497,10 @@
   background: #35945c;
 }
 
-/* Focus states for accessibility */
-button:focus,
-input:focus,
-select:focus {
+/* Focus states for accessibility (scoped to profile page only) */
+.profile-container button:focus,
+.profile-container input:focus,
+.profile-container select:focus {
   outline: 2px solid #3fa56d;
   outline-offset: 2px;
 }
