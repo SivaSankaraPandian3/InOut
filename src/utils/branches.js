@@ -9,6 +9,7 @@ export const extractBranchFromUser = (user) => {
     normalizeBranchValue(user.branch) ||
     normalizeBranchValue(getUserWorks(user)[0]?.branch) ||
     normalizeBranchValue(user.bankDetails?.officeBranch) ||
+    normalizeBranchValue(user.address) ||
     ''
   );
 };
@@ -17,6 +18,10 @@ export const extractBranchFromUser = (user) => {
 export const buildUserUpdatePayload = (form) => {
   const synced = withSyncedWorks(form, normalizeBranchValue(form.branch));
   const branch = extractBranchFromUser(synced) || normalizeBranchValue(form.branch) || '';
+  const existingAddress = (synced.address || '').trim();
+  const addressIsBranch = !!normalizeBranchValue(existingAddress);
+  const hasRealAddress =
+    existingAddress && !addressIsBranch && existingAddress.toLowerCase() !== 'n/a';
 
   return {
     name: synced.name || '',
@@ -33,6 +38,7 @@ export const buildUserUpdatePayload = (form) => {
     dateOfJoining: synced.dateOfJoining || undefined,
     dateOfRelieving: synced.dateOfRelieving || null,
     dateOfBirth: synced.dateOfBirth || undefined,
+    address: branch && !hasRealAddress ? branch : existingAddress || undefined,
     profilePic: synced.profilePic || '',
     skills: Array.isArray(synced.skills) ? synced.skills : [],
     rolesAndResponsibility: Array.isArray(synced.rolesAndResponsibility)
@@ -89,7 +95,8 @@ export const getUserBranch = (user) => {
   const fromField =
     normalizeBranchValue(user.branch) ||
     normalizeBranchValue(user.works?.[0]?.branch) ||
-    normalizeBranchValue(user.bankDetails?.officeBranch);
+    normalizeBranchValue(user.bankDetails?.officeBranch) ||
+    normalizeBranchValue(user.address);
   if (fromField) return fromField;
 
   const dept = (

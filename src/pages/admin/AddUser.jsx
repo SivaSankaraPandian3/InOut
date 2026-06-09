@@ -65,6 +65,7 @@ const AddUser = () => {
       position: form.position.trim(),
       company: form.company,
       branch: form.branch,
+      address: form.branch || form.address || undefined,
       department: form.department || form.branch || '',
       salary: form.salary ? Number(form.salary) : 0,
       qualification: form.qualification,
