@@ -10,8 +10,41 @@ import ReportGenerator from '../../components/admin-dashboard/dashboard/ReportGe
 import { Sync } from '@mui/icons-material';
 import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
 import { isSameLocalDay, localDateYMD } from '../../utils/localDate';
+import {
+  enrichLogNames,
+  filterLogsByDate,
+  normalizeLogs,
+} from '../../utils/dashboardLogs';
 
-const normalizeLogs = (data) => (Array.isArray(data) ? data : []);
+const fetchDashboardLogs = async (dateFilter, headers) => {
+  const datedUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?date=${encodeURIComponent(dateFilter)}&_=${Date.now()}`;
+  try {
+    const datedRes = await axios.get(datedUrl, { headers });
+    const dated = normalizeLogs(datedRes.data);
+    if (dated.length > 0) return dated;
+  } catch {
+    /* try wider window */
+  }
+
+  try {
+    const wideUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?days=120&_=${Date.now()}`;
+    const wideRes = await axios.get(wideUrl, { headers });
+    const filtered = filterLogsByDate(normalizeLogs(wideRes.data), dateFilter);
+    if (filtered.length > 0) return filtered;
+  } catch {
+    /* try by-date route */
+  }
+
+  try {
+    const byDateRes = await axios.get(
+      `${API_ENDPOINTS.getAttendanceByDate(dateFilter)}?_=${Date.now()}`,
+      { headers }
+    );
+    return normalizeLogs(byDateRes.data);
+  } catch {
+    return [];
+  }
+};
 
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
@@ -37,41 +70,9 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!token) return undefined;
-
-    const fetchSummaryAndUsers = async () => {
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache',
-      };
-
-      try {
-        const [summaryRes, usersRes] = await Promise.all([
-          axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
-          axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
-        ]);
-        setSummary(summaryRes.data || {});
-        setAllUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
-      } catch (err) {
-        console.error('Dashboard summary error:', err);
-        if (err.response?.status === 403) {
-          setFetchError('Admin access only. Log out and sign in with an admin account.');
-        } else if (err.response?.status === 401) {
-          setFetchError('Session expired. Please log in again.');
-        } else {
-          setFetchError('Could not load dashboard summary. Please refresh or try again.');
-        }
-      }
-    };
-
-    fetchSummaryAndUsers();
-  }, [token, refreshNonce]);
-
-  useEffect(() => {
     if (!token || !dateFilter) return undefined;
 
-    const fetchLogsForDate = async () => {
+    const loadDashboard = async () => {
       setLoading(true);
       setFetchError('');
       const headers = {
@@ -81,30 +82,21 @@ const Dashboard = () => {
       };
 
       try {
-        let logsData = [];
-        try {
-          const byDateRes = await axios.get(
-            `${API_ENDPOINTS.getAttendanceByDate(dateFilter)}?_=${Date.now()}`,
-            { headers }
-          );
-          logsData = normalizeLogs(byDateRes.data);
-        } catch {
-          /* fall through to recent-dashboard */
-        }
+        const [summaryRes, usersRes, logsRaw] = await Promise.all([
+          axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
+          axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
+          fetchDashboardLogs(dateFilter, headers),
+        ]);
 
-        if (logsData.length === 0) {
-          const recentRes = await axios.get(
-            `${API_ENDPOINTS.getRecentDashboardLogs}?_=${Date.now()}`,
-            { headers }
-          );
-          const recent = normalizeLogs(recentRes.data);
-          logsData = recent.filter((log) => isSameLocalDay(log.timestamp, dateFilter));
-        }
+        const users = Array.isArray(usersRes.data) ? usersRes.data : [];
+        const logsData = enrichLogNames(logsRaw, users);
 
+        setSummary(summaryRes.data || {});
+        setAllUsers(users);
         setLogs(logsData);
         setFilteredLogs(logsData);
       } catch (err) {
-        console.error('Dashboard logs error:', err);
+        console.error('Dashboard loading error:', err);
         setLogs([]);
         setFilteredLogs([]);
         if (err.response?.status === 403) {
@@ -120,7 +112,7 @@ const Dashboard = () => {
       }
     };
 
-    fetchLogsForDate();
+    loadDashboard();
   }, [token, dateFilter, refreshNonce]);
 
   

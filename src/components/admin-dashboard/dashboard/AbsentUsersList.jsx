@@ -1,12 +1,22 @@
 import React from 'react';
+import { activeEmployees, normalizeId, presentEmployeeIds } from '../../../utils/dashboardLogs';
 
 const AbsentUsersList = ({ allUsers = [], logs = [] }) => {
-  const presentUserIds = logs
-    .filter((log) => log.type === 'check-in')
-    .map((log) => log.userId)
-    .filter(Boolean);
+  const presentIds = presentEmployeeIds(logs);
+  const presentNames = new Set(
+    logs
+      .filter((log) => log.type === 'check-in')
+      .map((log) => (log.employeeName || log.name || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
 
-  const absentees = allUsers.filter((user) => !presentUserIds.includes(user._id));
+  const employees = activeEmployees(allUsers);
+  const absentees = employees.filter((user) => {
+    if (presentIds.has(normalizeId(user._id))) return false;
+    const name = (user.name || '').trim().toLowerCase();
+    if (name && presentNames.has(name)) return false;
+    return true;
+  });
 
   if (absentees.length === 0) return null;
 
