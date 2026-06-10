@@ -9,11 +9,6 @@ import AbsentUsersList from '../../components/admin-dashboard/dashboard/AbsentUs
 import ReportGenerator from '../../components/admin-dashboard/dashboard/ReportGenerator';
 import { Sync } from '@mui/icons-material';
 import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
-import {
-  DUMMY_ATTENDANCE_LOGS,
-  DUMMY_DASHBOARD_SUMMARY,
-  DUMMY_USERS,
-} from '../../utils/dummyAttendanceData';
 
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
@@ -204,20 +199,6 @@ const Dashboard = () => {
         >
           <Sync fontSize="small" />
           Refresh Data
-        </button>
-
-        <button
-          type="button"
-          className="uc-btn uc-btn-outline"
-          onClick={() => {
-            setSummary(DUMMY_DASHBOARD_SUMMARY);
-            setLogs(DUMMY_ATTENDANCE_LOGS);
-            setFilteredLogs(DUMMY_ATTENDANCE_LOGS);
-            setAllUsers(DUMMY_USERS);
-            setLoading(false);
-          }}
-        >
-          Load Test Data
         </button>
       </div>
 
