@@ -1,13 +1,25 @@
 import React, { useState } from "react";
-import { officePresentBadgeClass } from "../../../utils/branches";
+import {
+  branchToOfficeName,
+  extractBranchFromUser,
+  findUserForAttendanceLog,
+  officePresentBadgeClass,
+} from "../../../utils/branches";
 import { getLogOfficeName } from "../../../utils/officeLocations";
 import {
   getAttendanceImage,
   resolveAttendanceImageUrl,
 } from "../../../utils/attendanceImage";
 
-const RecentAttendanceTable = ({ logs = [] }) => {
+const RecentAttendanceTable = ({ logs = [], allUsers = [] }) => {
   const [modalImage, setModalImage] = useState(null);
+
+  const preferredOfficeForLog = (log) => {
+    if (!log) return null;
+    if (log.userBranch) return branchToOfficeName(log.userBranch);
+    const user = findUserForAttendanceLog(log, allUsers);
+    return branchToOfficeName(extractBranchFromUser(user));
+  };
 
   const groupLogsByEmployeeAndDate = (logList) => {
     const grouped = {};
@@ -93,7 +105,7 @@ const RecentAttendanceTable = ({ logs = [] }) => {
                 </td>
                 <td>
                   {(() => {
-                    const name = getLogOfficeName(entry.checkIn);
+                    const name = getLogOfficeName(entry.checkIn, preferredOfficeForLog(entry.checkIn));
                     return (
                       <span className={officePresentBadgeClass(name)}>
                         {name}
@@ -103,7 +115,7 @@ const RecentAttendanceTable = ({ logs = [] }) => {
                 </td>
                 <td>
                   {(() => {
-                    const name = getLogOfficeName(entry.checkOut);
+                    const name = getLogOfficeName(entry.checkOut, preferredOfficeForLog(entry.checkOut));
                     return (
                       <span className={officePresentBadgeClass(name)}>
                         {name}

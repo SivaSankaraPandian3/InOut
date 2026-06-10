@@ -1,3 +1,5 @@
+import { branchToOfficeName } from './branches';
+
 /** Mirror of backend `config/officeLocation.js` — for UI preview only. */
 export const OFFICE_LOCATIONS = [
   {
@@ -19,7 +21,7 @@ export const OFFICE_LOCATIONS = [
     branchName: 'Tirunelveli',
     latitude: 8.7237565,
     longitude: 77.722212,
-    radiusMeters: 800,
+    radiusMeters: 1200,
     address:
       '3rd Floor, Fab Sapphire Towers, 29/5, S Bypass Rd, Vasanth Nagar, Tirunelveli, Tamil Nadu 627005',
     plusCode: 'MPXG+GQ Tirunelveli',
@@ -38,6 +40,12 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
   return 2 * R * Math.asin(Math.sqrt(a));
 };
 
+const effectiveRadius = (office, preferredOfficeName) => {
+  if (!preferredOfficeName || office.name !== preferredOfficeName) return office.radiusMeters;
+  if (office.name === 'Tirunelveli') return 2500;
+  return Math.round(office.radiusMeters * 1.5);
+};
+
 /** Within branch radius → branch name; otherwise Outside Office. */
 export const resolveOfficeFromLocation = (locationString, preferredOfficeName = null) => {
   if (!locationString || !String(locationString).includes(',')) return null;
@@ -48,10 +56,7 @@ export const resolveOfficeFromLocation = (locationString, preferredOfficeName = 
 
   for (const office of OFFICE_LOCATIONS) {
     const distance = haversineMeters(lat, lon, office.latitude, office.longitude);
-    let radius = office.radiusMeters;
-    if (preferredOfficeName && office.name === preferredOfficeName) {
-      radius = Math.round(radius * 1.5);
-    }
+    const radius = effectiveRadius(office, preferredOfficeName);
     if (distance <= radius) {
       if (!best || distance < best.distanceMeters) {
         best = {
@@ -77,10 +82,11 @@ export const formatOfficeDisplayName = (name) => {
 };
 
 /** Dashboard / reports: prefer GPS-based branch when coordinates exist. */
-export const getLogOfficeName = (log) => {
+export const getLogOfficeName = (log, preferredOfficeName = null) => {
   if (!log) return '—';
+  const preferred = preferredOfficeName || branchToOfficeName(log.userBranch);
   if (log.location) {
-    const resolved = resolveOfficeFromLocation(log.location);
+    const resolved = resolveOfficeFromLocation(log.location, preferred);
     if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
   }
   return formatOfficeDisplayName(log.officeName) || '—';

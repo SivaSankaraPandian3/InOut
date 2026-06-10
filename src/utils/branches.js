@@ -2,6 +2,15 @@ import { getPrimaryWork, getUserWorks, withSyncedWorks } from './userWorks';
 
 export const BRANCH_OPTIONS = ['Pallikaranai', 'Velachery', 'Tirunelveli'];
 
+/** Map profile branch text to office config `name` for GPS matching. */
+export const branchToOfficeName = (branch) => {
+  const b = String(branch || '').toLowerCase();
+  if (b.includes('tirunel') || b.includes('tvl')) return 'Tirunelveli';
+  if (b.includes('pallikar')) return 'Pallikaranai';
+  if (b.includes('velach') || b.includes('velech')) return 'Velechery';
+  return null;
+};
+
 /** Read branch from API user (top-level, works, or bankDetails.officeBranch). */
 export const extractBranchFromUser = (user) => {
   if (!user) return '';

@@ -202,7 +202,7 @@ const Dashboard = () => {
         </button>
       </div>
 
-      <RecentAttendanceTable logs={filteredLogs} />
+      <RecentAttendanceTable logs={filteredLogs} allUsers={allUsers} />
       <AbsentUsersList allUsers={usersForBranch} logs={logsForSelectedDate} />
     </div>
   );
