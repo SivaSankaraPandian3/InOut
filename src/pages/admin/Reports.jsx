@@ -63,6 +63,49 @@ import {
   getUserBranch,
   matchesBranchFilter,
 } from "../../utils/branches";
+import {
+  enrichLogNames,
+  getLogTimestamp,
+  mapRawAttendanceRecords,
+  normalizeLogs,
+} from "../../utils/dashboardLogs";
+
+const REPORTS_MIN_DATE = new Date(2024, 0, 1);
+const REPORTS_MAX_DATE = new Date(new Date().getFullYear() + 1, 11, 31);
+
+const fetchAllReportLogs = async (headers, users) => {
+  try {
+    const res = await axios.get(`${API_ENDPOINTS.getAttendanceAll}?_=${Date.now()}`, { headers });
+    const rows = enrichLogNames(normalizeLogs(res.data), users);
+    if (rows.length > 0) return rows;
+  } catch {
+    /* fall through */
+  }
+
+  try {
+    const res = await axios.get(
+      `${API_ENDPOINTS.getRecentDashboardLogs}?days=730&_=${Date.now()}`,
+      { headers }
+    );
+    const rows = enrichLogNames(normalizeLogs(res.data), users);
+    if (rows.length > 0) return rows;
+  } catch {
+    /* fall through */
+  }
+
+  try {
+    const res = await axios.get(`${API_ENDPOINTS.getAttendanceAll}?_=${Date.now()}`, { headers });
+    return mapRawAttendanceRecords(normalizeLogs(res.data), users);
+  } catch {
+    return [];
+  }
+};
+
+const logIsInMonth = (log, y, monthIndex0) => {
+  const ts = getLogTimestamp(log);
+  if (!ts) return false;
+  return ts.getFullYear() === y && ts.getMonth() === monthIndex0;
+};
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -86,15 +129,19 @@ const logUserId = (log) => {
 
 const normalizeLogType = (type) => String(type || '').toLowerCase().replace(/[\s_-]/g, '');
 
+const logTimeMs = (log) => getLogTimestamp(log)?.getTime() ?? 0;
+
 const mergeAttendanceCell = (cell, log) => {
   if (!log || typeof log !== 'object') return cell;
   const t = normalizeLogType(log.type);
+  const ts = logTimeMs(log);
+  if (!ts) return cell;
   if (t === 'checkin') {
-    if (!cell.checkIn || new Date(log.timestamp) < new Date(cell.checkIn.timestamp)) {
+    if (!cell.checkIn || ts < logTimeMs(cell.checkIn)) {
       cell.checkIn = log;
     }
   } else if (t === 'checkout') {
-    if (!cell.checkOut || new Date(log.timestamp) > new Date(cell.checkOut.timestamp)) {
+    if (!cell.checkOut || ts > logTimeMs(cell.checkOut)) {
       cell.checkOut = log;
     }
   }
@@ -114,8 +161,9 @@ const buildAttendanceIndex = (filteredLogs) => {
   };
 
   filteredLogs.forEach((log) => {
-    if (!log || !log.timestamp) return;
-    const dateKey = new Date(log.timestamp).toDateString();
+    const ts = getLogTimestamp(log);
+    if (!log || !ts) return;
+    const dateKey = ts.toDateString();
     const label = logEmployeeLabel(log);
     const uid = logUserId(log);
     const norm = normalizeName(label);
@@ -340,7 +388,7 @@ const Report = () => {
   const [logs, setLogs] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
-  const [holidays, setHolidays] = useState([]);
+  const [allHolidays, setAllHolidays] = useState([]);
   const [approvedLeaves, setApprovedLeaves] = useState([]);
   const [openIndex, setOpenIndex] = useState(null);
   /** Bump to refetch without full page reload (replaces localStorage cache for this page). */
@@ -356,58 +404,44 @@ const Report = () => {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
+    if (!token) return undefined;
+
     const fetchData = async () => {
       setLoading(true);
-
       const headers = { Authorization: `Bearer ${token}` };
-      const year = selectedMonth.getFullYear();
-      const month = selectedMonth.getMonth() + 1;
 
       try {
-        console.log("⏳ Fetching fresh data...");
-        const [logsRes, schedulesRes, leavesRes, allHolidaysRes, usersRes] = await Promise.all([
-          axios.get(API_ENDPOINTS.getAttendanceAll, { headers }),
+        const [schedulesRes, leavesRes, holidaysRes, usersRes] = await Promise.all([
           axios.get(API_ENDPOINTS.getSchedules, { headers }),
           axios.get(API_ENDPOINTS.getAllLeaves, { headers }),
           axios.get(API_ENDPOINTS.getHolidays, { headers }),
-          axios.get(API_ENDPOINTS.getUsers, { headers }),
+          axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
         ]);
 
-        let holidayData = filterHolidaysForMonth(allHolidaysRes.data, year, selectedMonth.getMonth());
-
-        if (holidayData.length === 0) {
-          try {
-            const monthHolidaysRes = await axios.get(
-              `${API_ENDPOINTS.getHolidaysByMonth}?year=${year}&month=${month}`,
-              { headers }
-            );
-            holidayData = filterHolidaysForMonth(monthHolidaysRes.data, year, selectedMonth.getMonth());
-          } catch {
-            /* use empty */
-          }
-        }
-
-        const leavesData = Array.isArray(leavesRes.data) ? leavesRes.data : [];
-
         const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
+        const logsData = await fetchAllReportLogs(headers, usersData);
 
-        setLogs(Array.isArray(logsRes.data) ? logsRes.data.filter(Boolean) : []);
-        setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
         setAllUsers(usersData);
-        setHolidays(holidayData);
-        setApprovedLeaves(leavesData);
-      }
-      catch (err) {
+        setLogs(logsData);
+        setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
+        setAllHolidays(normalizeHolidayList(holidaysRes.data));
+        setApprovedLeaves(Array.isArray(leavesRes.data) ? leavesRes.data : []);
+      } catch (err) {
         console.error("Failed to fetch data:", err);
-      }
-      finally {
+      } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [token, selectedMonth, dataFetchNonce]);
-  // Add selectedMonth as dependency
+  }, [token, dataFetchNonce]);
+
+  const [year, month] = [selectedMonth.getFullYear(), selectedMonth.getMonth()];
+
+  const holidays = useMemo(
+    () => filterHolidaysForMonth(allHolidays, year, month),
+    [allHolidays, year, month]
+  );
 
   const holidayDateKeys = useMemo(
     () => new Set(holidays.map((h) => toDateKey(h.date)).filter(Boolean)),
@@ -436,7 +470,6 @@ const Report = () => {
   const isOnApprovedLeave = (employeeName, dateObj) => !!getApprovedLeaveOnDate(employeeName, dateObj);
 
 
-  const [year, month] = [selectedMonth.getFullYear(), selectedMonth.getMonth()];
   const allDates = getDatesInMonth(year, month);
 
 
@@ -603,12 +636,7 @@ const Report = () => {
 
 
   const filteredLogs = useMemo(
-    () =>
-      logs.filter((log) => {
-        if (!log || !log.timestamp) return false;
-        const date = new Date(log.timestamp);
-        return date.getFullYear() === year && date.getMonth() === month;
-      }),
+    () => logs.filter((log) => log && logIsInMonth(log, year, month)),
     [logs, year, month]
   );
 
@@ -731,6 +759,8 @@ const Report = () => {
                 views={["year", "month"]}
                 openTo="month"
                 label="Select Month"
+                minDate={REPORTS_MIN_DATE}
+                maxDate={REPORTS_MAX_DATE}
                 value={selectedMonth}
                 onChange={(newValue) => {
                   if (newValue) {
