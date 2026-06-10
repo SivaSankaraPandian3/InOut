@@ -1,10 +1,12 @@
 
 
 // src/utils/api.js
-// Always use the live API (local dev + production). Avoids ERR_CONNECTION_REFUSED
-// when the CRA dev proxy is not running.
+// Local dev (npm start): relative URLs → setupProxy.js forwards to Render (no CORS).
+// Production build: calls Render API directly.
 const PRODUCTION_API = 'https://uc-attendance-system-1ts2.onrender.com';
-export const BASE_URL = process.env.REACT_APP_API_URL || PRODUCTION_API;
+export const BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === 'production' ? PRODUCTION_API : '');
 
 // -----------------
 // Auth & User APIs

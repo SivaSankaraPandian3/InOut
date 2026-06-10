@@ -19,6 +19,7 @@ module.exports = function (app) {
         target: 'https://uc-attendance-system-1ts2.onrender.com',
         changeOrigin: true,
         secure: true,
+        logLevel: 'silent',
       }
     )
   );
