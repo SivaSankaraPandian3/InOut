@@ -1,5 +1,3 @@
-import { branchToOfficeName } from './branches';
-
 /** Mirror of backend `config/officeLocation.js` — for UI preview only. */
 export const OFFICE_LOCATIONS = [
   {
@@ -40,14 +38,8 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
   return 2 * R * Math.asin(Math.sqrt(a));
 };
 
-const effectiveRadius = (office, preferredOfficeName) => {
-  if (!preferredOfficeName || office.name !== preferredOfficeName) return office.radiusMeters;
-  if (office.name === 'Tirunelveli') return 2500;
-  return Math.round(office.radiusMeters * 1.5);
-};
-
-/** Within branch radius → branch name; otherwise Outside Office. */
-export const resolveOfficeFromLocation = (locationString, preferredOfficeName = null) => {
+/** GPS within office radius → branch name; otherwise Outside Office. */
+export const resolveOfficeFromLocation = (locationString) => {
   if (!locationString || !String(locationString).includes(',')) return null;
   const [lat, lon] = String(locationString).split(',').map(Number);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
@@ -56,8 +48,7 @@ export const resolveOfficeFromLocation = (locationString, preferredOfficeName = 
 
   for (const office of OFFICE_LOCATIONS) {
     const distance = haversineMeters(lat, lon, office.latitude, office.longitude);
-    const radius = effectiveRadius(office, preferredOfficeName);
-    if (distance <= radius) {
+    if (distance <= office.radiusMeters) {
       if (!best || distance < best.distanceMeters) {
         best = {
           officeName: office.branchName || office.name,
@@ -81,42 +72,13 @@ export const formatOfficeDisplayName = (name) => {
   return n;
 };
 
-const distanceBetweenCoords = (a, b) => {
-  const [lat1, lon1] = String(a).split(',').map(Number);
-  const [lat2, lon2] = String(b).split(',').map(Number);
-  if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return Infinity;
-  return haversineMeters(lat1, lon1, lat2, lon2);
-};
-
-/** Dashboard / reports: GPS geofence; check-out can pair with same-day in-office check-in. */
-export const getLogOfficeName = (log, preferredOfficeName = null, options = {}) => {
+/** Dashboard / reports: office radius only — no branch override. */
+export const getLogOfficeName = (log) => {
   if (!log) return '—';
-  const { pairedLog } = options;
-  const preferred = preferredOfficeName || branchToOfficeName(log.userBranch);
-
   if (log.location) {
-    const resolved = resolveOfficeFromLocation(log.location, preferred);
+    const resolved = resolveOfficeFromLocation(log.location);
     if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
-
-    if (pairedLog?.location) {
-      const pairedResolved = resolveOfficeFromLocation(pairedLog.location, preferred);
-      if (
-        pairedResolved?.isInOffice &&
-        distanceBetweenCoords(log.location, pairedLog.location) <= 600
-      ) {
-        return formatOfficeDisplayName(pairedResolved.officeName);
-      }
-    }
-
     return 'Outside Office';
   }
-
-  if (pairedLog?.location) {
-    const pairedResolved = resolveOfficeFromLocation(pairedLog.location, preferred);
-    if (pairedResolved?.isInOffice) {
-      return formatOfficeDisplayName(pairedResolved.officeName);
-    }
-  }
-
   return formatOfficeDisplayName(log.officeName) || '—';
 };
