@@ -42,18 +42,9 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
 
 const effectiveRadius = (office, preferredOfficeName) => {
   if (!preferredOfficeName || office.name !== preferredOfficeName) return office.radiusMeters;
-  if (office.name === 'Tirunelveli') return 3000;
+  if (office.name === 'Tirunelveli') return 2000;
   return Math.round(office.radiusMeters * 1.5);
 };
-
-/** Rough Tirunelveli city bounds — indoor GPS often drifts far from office pin. */
-const isInTirunelveliRegion = (lat, lon) =>
-  Number.isFinite(lat) &&
-  Number.isFinite(lon) &&
-  lat >= 8.65 &&
-  lat <= 8.85 &&
-  lon >= 77.65 &&
-  lon <= 77.78;
 
 /** Within branch radius → branch name; otherwise Outside Office. */
 export const resolveOfficeFromLocation = (locationString, preferredOfficeName = null) => {
@@ -78,17 +69,6 @@ export const resolveOfficeFromLocation = (locationString, preferredOfficeName = 
   }
 
   if (best) return best;
-
-  if (preferredOfficeName === 'Tirunelveli' && isInTirunelveliRegion(lat, lon)) {
-    const tvl = OFFICE_LOCATIONS.find((o) => o.name === 'Tirunelveli');
-    const distance = haversineMeters(lat, lon, tvl.latitude, tvl.longitude);
-    return {
-      officeName: tvl.branchName,
-      isInOffice: true,
-      distanceMeters: Math.round(distance),
-    };
-  }
-
   return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
 };
 
@@ -109,11 +89,7 @@ export const getLogOfficeName = (log, preferredOfficeName = null) => {
   if (log.location) {
     const resolved = resolveOfficeFromLocation(log.location, preferred);
     if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
-  }
-
-  // Legacy live API may omit location / save Outside Office for Tirunelveli staff.
-  if (preferred === 'Tirunelveli' && log.officeName === 'Outside Office') {
-    return 'Tirunelveli';
+    return 'Outside Office';
   }
 
   return formatOfficeDisplayName(log.officeName) || '—';
