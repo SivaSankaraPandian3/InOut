@@ -1,35 +1,31 @@
 import React from 'react';
+import { getLocalDateKey, isSameCalendarDay } from '../../utils/attendanceDate';
 
 function formatTime(timestamp) {
   if (!timestamp) return '--:--';
   const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '--:--';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function AttendanceCards({ attendanceData = [] }) {
-  if (!attendanceData.length) return null;
+function AttendanceCards({ attendanceData = [], selectedDate = new Date() }) {
+  const dayEntries = attendanceData.filter((entry) =>
+    isSameCalendarDay(entry.timestamp, selectedDate)
+  );
 
-  // Group attendance by date
-  const grouped = attendanceData.reduce((acc, entry) => {
-    const date = new Date(entry.timestamp).toDateString();
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(entry);
-    return acc;
-  }, {});
+  const checkIn = dayEntries.find((entry) => entry.type === 'check-in');
+  const checkOut = dayEntries.find((entry) => entry.type === 'check-out');
 
-  // Get latest date
-  const latestDate = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a))[0];
-  const latestEntries = grouped[latestDate] || [];
-
-  const checkIn = latestEntries.find(entry => entry.type === 'check-in');
-  const checkOut = latestEntries.find(entry => entry.type === 'check-out');
+  const totalWorkingDays = new Set(
+    attendanceData.map((entry) => getLocalDateKey(entry.timestamp)).filter(Boolean)
+  ).size;
 
   const cards = [
     {
       title: 'Check In',
       time: formatTime(checkIn?.timestamp),
       note: checkIn ? 'On Time' : 'Not Yet',
-      bgColor: 'bg-green-100', 
+      bgColor: 'bg-green-100',
       textColor: 'text-green-800',
     },
     {
@@ -48,7 +44,7 @@ function AttendanceCards({ attendanceData = [] }) {
     },
     {
       title: 'Total Days',
-      time: Object.keys(grouped).length.toString(),
+      time: String(totalWorkingDays),
       note: 'Working Days',
       bgColor: 'bg-purple-100',
       textColor: 'text-purple-800',

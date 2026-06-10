@@ -1,6 +1,7 @@
 import React from 'react';
+import { isSameCalendarDay } from '../../utils/attendanceDate';
 
-function DateStrip({ selectedDate, setSelectedDate }) {
+function DateStrip({ selectedDate, setSelectedDate, markedDates = [] }) {
   const today = new Date();
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -11,8 +12,9 @@ function DateStrip({ selectedDate, setSelectedDate }) {
       date: d,
       day: d.getDate().toString().padStart(2, '0'),
       label: dayLabels[d.getDay()],
-      isToday: d.toDateString() === today.toDateString(),
-      isSelected: d.toDateString() === selectedDate.toDateString(),
+      isToday: isSameCalendarDay(d, today),
+      isSelected: isSameCalendarDay(d, selectedDate),
+      hasActivity: markedDates.some((key) => isSameCalendarDay(key, d)),
     };
   });
 
@@ -29,8 +31,12 @@ function DateStrip({ selectedDate, setSelectedDate }) {
         >
           <span className="text-base">{d.day}</span>
           <span className="text-xs font-medium">{d.label}</span>
-          {d.isToday && !d.isSelected && (
-            <span className="mt-1 w-1.5 h-1.5 bg-blue-400 rounded-full" />
+          {(d.hasActivity || (d.isToday && !d.isSelected)) && (
+            <span
+              className={`mt-1 w-1.5 h-1.5 rounded-full ${
+                d.hasActivity ? 'bg-green-500' : 'bg-blue-400'
+              }`}
+            />
           )}
         </button>
       ))}

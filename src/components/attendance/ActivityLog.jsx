@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatOfficeDisplayName, getLogOfficeName } from '../../utils/officeLocations';
 
 function ActivityLog({ activities }) {
   if (!activities || activities.length === 0) {
@@ -19,6 +20,11 @@ function ActivityLog({ activities }) {
         >
           <p className="text-sm font-medium capitalize text-gray-700">
             {item.type}
+            {item.location && (
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                · {formatOfficeDisplayName(getLogOfficeName(item))}
+              </span>
+            )}
           </p>
           <div className="flex justify-between text-sm mt-1">
             <span className="font-bold text-gray-900">

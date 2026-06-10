@@ -16,6 +16,7 @@ import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
 import { appendAttendanceImage } from "../../utils/attendanceImage";
 import { formatOfficeDisplayName, resolveOfficeFromLocation } from "../../utils/officeLocations";
+import { getLocalDateKey, isSameCalendarDay } from "../../utils/attendanceDate";
 
 function AttendancePage() {
   const navigate = useNavigate();
@@ -71,9 +72,8 @@ function AttendancePage() {
       );
       setAttendanceHistory(res.data);
 
-      const today = new Date().toDateString();
-      const todayEntries = res.data.filter(
-        (entry) => new Date(entry.timestamp).toDateString() === today
+      const todayEntries = res.data.filter((entry) =>
+        isSameCalendarDay(entry.timestamp, new Date())
       );
 
       if (isSelf) {
@@ -225,8 +225,7 @@ function AttendancePage() {
 
   attendanceHistory.forEach((entry) => {
     try {
-      const entryDate = new Date(entry.timestamp);
-      const dateKey = entryDate.toDateString(); // Format: "Mon Mar 10 2025"
+      const dateKey = getLocalDateKey(entry.timestamp);
 
       if (!attendanceMap[dateKey]) {
         attendanceMap[dateKey] = {
@@ -251,9 +250,8 @@ function AttendancePage() {
   });
 
   // Today's filtered logs (unchanged)
-  const filteredLogs = attendanceHistory.filter(
-    (entry) =>
-      new Date(entry.timestamp).toDateString() === selectedDate.toDateString()
+  const filteredLogs = attendanceHistory.filter((entry) =>
+    isSameCalendarDay(entry.timestamp, selectedDate)
   );
 
 // Get current month and year
@@ -399,7 +397,7 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                   // Don't show status for future dates
                   if (date > today) return "";
 
-                  const key = date.toDateString();
+                  const key = getLocalDateKey(date);
                   const record = attendanceMap[key];
 
                   let className = "";
@@ -447,7 +445,7 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2">Selected Date: {selectedDate.toDateString()}</h3>
               {(() => {
-                const key = selectedDate.toDateString();
+                const key = getLocalDateKey(selectedDate);
                 const record = attendanceMap[key];
 
                 if (record?.checkin || record?.checkout) {
@@ -511,9 +509,16 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
 
       <div className="mt-8">
         <h3 className="text-lg font-semibold text-gray-700 mb-3">
-          Today Attendance
+          Attendance — {selectedDate.toLocaleDateString(undefined, {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+          })}
         </h3>
-        <AttendanceCards attendanceData={attendanceHistory} />
+        <AttendanceCards
+          attendanceData={attendanceHistory}
+          selectedDate={selectedDate}
+        />
         <br></br>
         <ActivityLog activities={filteredLogs} />
       </div>
@@ -521,6 +526,7 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
         <DateStrip
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
+          markedDates={attendanceHistory.map((e) => e.timestamp)}
         />
       </div>
       {isSelf && type && !isCapturing && (
