@@ -9,6 +9,9 @@ import AbsentUsersList from '../../components/admin-dashboard/dashboard/AbsentUs
 import ReportGenerator from '../../components/admin-dashboard/dashboard/ReportGenerator';
 import { Sync } from '@mui/icons-material';
 import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
+import { isSameLocalDay, localDateYMD } from '../../utils/localDate';
+
+const normalizeLogs = (data) => (Array.isArray(data) ? data : []);
 
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
@@ -17,15 +20,13 @@ const Dashboard = () => {
   const [allUsers, setAllUsers] = useState([]); 
 
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState(() => {
-  const today = new Date();
-  return today.toISOString().split('T')[0]; // Format: 'YYYY-MM-DD'
-});
+  const [dateFilter, setDateFilter] = useState(() => localDateYMD());
   const [typeFilter] = useState('all');
   const [locationFilter] = useState('all');
   const [companyFilter] = useState('all');
   const [filterBranch, setFilterBranch] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
 
   const token = localStorage.getItem('token');
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -38,8 +39,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!token) return undefined;
 
-    const fetchDashboardData = async () => {
-      setLoading(true);
+    const fetchSummaryAndUsers = async () => {
       const headers = {
         Authorization: `Bearer ${token}`,
         'Cache-Control': 'no-cache',
@@ -47,25 +47,69 @@ const Dashboard = () => {
       };
 
       try {
-        const [summaryRes, logsRes, usersRes] = await Promise.all([
+        const [summaryRes, usersRes] = await Promise.all([
           axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
-          axios.get(`${API_ENDPOINTS.getRecentDashboardLogs}?_=${Date.now()}`, { headers }),
           axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
         ]);
-
         setSummary(summaryRes.data || {});
-        setLogs(logsRes.data || []);
-        setFilteredLogs(logsRes.data || []);
-        setAllUsers(usersRes.data || []);
+        setAllUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
       } catch (err) {
-        console.error('Dashboard loading error:', err);
+        console.error('Dashboard summary error:', err);
+        setFetchError('Could not load dashboard summary. Please log in again or refresh.');
+      }
+    };
+
+    fetchSummaryAndUsers();
+  }, [token, refreshNonce]);
+
+  useEffect(() => {
+    if (!token || !dateFilter) return undefined;
+
+    const fetchLogsForDate = async () => {
+      setLoading(true);
+      setFetchError('');
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      };
+
+      try {
+        let logsData = [];
+        try {
+          const byDateRes = await axios.get(
+            `${API_ENDPOINTS.getAttendanceByDate(dateFilter)}?_=${Date.now()}`,
+            { headers }
+          );
+          logsData = normalizeLogs(byDateRes.data);
+        } catch {
+          /* fall through to recent-dashboard */
+        }
+
+        if (logsData.length === 0) {
+          const recentRes = await axios.get(
+            `${API_ENDPOINTS.getRecentDashboardLogs}?_=${Date.now()}`,
+            { headers }
+          );
+          const recent = normalizeLogs(recentRes.data);
+          logsData = recent.filter((log) => isSameLocalDay(log.timestamp, dateFilter));
+        }
+
+        setLogs(logsData);
+        setFilteredLogs(logsData);
+      } catch (err) {
+        console.error('Dashboard logs error:', err);
+        setLogs([]);
+        setFilteredLogs([]);
+        const msg = err.response?.data?.msg || err.response?.data?.error;
+        setFetchError(msg || 'Could not load attendance. Check login or try Refresh Data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
-  }, [token, refreshNonce]);
+    fetchLogsForDate();
+  }, [token, dateFilter, refreshNonce]);
 
   
   // Apply filters
@@ -80,10 +124,7 @@ const Dashboard = () => {
     }
 
     if (dateFilter) {
-      const targetDate = new Date(dateFilter).toDateString();
-      result = result.filter(log =>
-        new Date(log.timestamp).toDateString() === targetDate
-      );
+      result = result.filter((log) => isSameLocalDay(log.timestamp, dateFilter));
     }
 
     if (typeFilter !== 'all') {
@@ -106,9 +147,7 @@ const Dashboard = () => {
     setFilteredLogs(result);
     
   }, [logs, search, dateFilter, typeFilter, locationFilter, companyFilter, filterBranch, allUsers]);
-  const logsForSelectedDate = logs.filter(log =>
-  new Date(log.timestamp).toDateString() === new Date(dateFilter).toDateString()
-);
+  const logsForSelectedDate = logs.filter((log) => isSameLocalDay(log.timestamp, dateFilter));
 
   const usersForBranch =
     filterBranch === 'All'
@@ -129,6 +168,12 @@ const Dashboard = () => {
       </div>
 
       {summary && <DashboardCards data={summary} />}
+
+      {fetchError && (
+        <div className="uc-alert uc-alert-error" role="alert">
+          {fetchError}
+        </div>
+      )}
 
       <div className="uc-grid-filters">
         <div className="uc-field">
