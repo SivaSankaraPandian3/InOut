@@ -15,8 +15,24 @@ import ActivityLog from "../../components/attendance/ActivityLog";
 import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
 import { appendAttendanceImage } from "../../utils/attendanceImage";
-import { formatOfficeDisplayName, resolveOfficeFromLocation } from "../../utils/officeLocations";
-import { getLocalDateKey, isSameCalendarDay } from "../../utils/attendanceDate";
+import {
+  formatOfficeDisplayName,
+  OFFICE_LOCATIONS,
+  resolveOfficeFromLocation,
+} from "../../utils/officeLocations";
+import {
+  getLocalDateKey,
+  isSameCalendarDay,
+  mergeAttendanceRecords,
+  normalizeAttendanceType,
+  parseAttendanceRecords,
+  resolveTodayAttendanceType,
+} from "../../utils/attendanceDate";
+import {
+  getGeolocationErrorMessage,
+  parseCoordsInput,
+  requestGeolocation,
+} from "../../utils/geolocation";
 
 function AttendancePage() {
   const navigate = useNavigate();
@@ -36,15 +52,42 @@ function AttendancePage() {
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [calendarViewDate, setCalendarViewDate] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [manualLocationInput, setManualLocationInput] = useState("");
   const [comment, setComment] = useState('');
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const lastSubmitRef = useRef(null);
 
   useEffect(() => {
     fetchUser();
-    fetchAttendance();
+    fetchAttendance({ mergeLocal: false });
   }, [userId]);
+
+  useEffect(() => {
+    if (!isSelf) return;
+    let cancelled = false;
+
+    const prefetch = async () => {
+      try {
+        const { coords } = await requestGeolocation();
+        if (!cancelled) {
+          setLocation(coords);
+          setDetectedOffice(resolveOfficeFromLocation(coords));
+          setLocationError("");
+        }
+      } catch {
+        // Permission prompt may appear on first Check In instead.
+      }
+    };
+
+    prefetch();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSelf]);
 
   const fetchUser = async () => {
     const token = localStorage.getItem("token");
@@ -61,34 +104,49 @@ function AttendancePage() {
     }
   };
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = async ({ mergeLocal = true } = {}) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get(
-        isSelf
-          ? API_ENDPOINTS.getMyAttendance
-          : API_ENDPOINTS.getAttendanceByUser(userId),
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setAttendanceHistory(res.data);
+      const endpoint = isSelf
+        ? API_ENDPOINTS.getMyAttendance
+        : API_ENDPOINTS.getAttendanceByUser(userId);
+      const res = await axios.get(`${endpoint}?_=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const records = parseAttendanceRecords(res.data);
 
-      const todayEntries = res.data.filter((entry) =>
-        isSameCalendarDay(entry.timestamp, new Date())
-      );
+      setAttendanceHistory((prev) => {
+        const merged = mergeLocal ? mergeAttendanceRecords(records, prev) : records;
 
-      if (isSelf) {
-        if (todayEntries.length === 0) {
-          setType("check-in");
-        } else if (
-          todayEntries.length === 1 &&
-          todayEntries[0].type === "check-in"
-        ) {
-          setType("check-out");
-        } else {
-          setType(null);
+        if (isSelf) {
+          const nextType = resolveTodayAttendanceType(merged);
+          const pending = lastSubmitRef.current;
+
+          setType((prevType) => {
+            if (pending === "check-in" && nextType === "check-in") return "check-out";
+            if (prevType === "check-out" && nextType === "check-in") return "check-out";
+            return nextType;
+          });
+
+          if (
+            pending === "check-in" &&
+            merged.some(
+              (e) =>
+                isSameCalendarDay(e.timestamp, new Date()) &&
+                normalizeAttendanceType(e.type) === "check-in"
+            )
+          ) {
+            lastSubmitRef.current = null;
+          }
+          if (pending === "check-out") {
+            lastSubmitRef.current = null;
+          }
         }
-      }
+
+        return merged;
+      });
     } catch (err) {
+      if (isSelf) setType("check-in");
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -97,23 +155,60 @@ function AttendancePage() {
     }
   };
 
-  const getLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
-        setLocation(coords);
-        setDetectedOffice(resolveOfficeFromLocation(coords));
-      },
-      () =>
-        Swal.fire({
-          icon: "error",
-          title: "Location Error",
-          text: "Please enable GPS to proceed.",
-        })
-    );
+  const applyCoords = (coords) => {
+    setLocation(coords);
+    setDetectedOffice(resolveOfficeFromLocation(coords));
+    setLocationError("");
+    return coords;
+  };
+
+  const requestLocation = async () => {
+    setLocationLoading(true);
+    setLocationError("");
+    try {
+      const { coords } = await requestGeolocation();
+      return applyCoords(coords);
+    } catch (err) {
+      const message = getGeolocationErrorMessage(err);
+      setLocationError(message);
+      throw err;
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const applyManualLocation = () => {
+    const coords = parseCoordsInput(manualLocationInput);
+    if (!coords) {
+      Swal.fire(
+        "Invalid coordinates",
+        "Enter latitude and longitude like: 8.7237565, 77.722212",
+        "warning"
+      );
+      return null;
+    }
+    setManualLocationInput("");
+    return applyCoords(coords);
+  };
+
+  const applyOfficeLocation = (office) => {
+    const coords = `${office.latitude},${office.longitude}`;
+    setManualLocationInput(coords);
+    return applyCoords(coords);
+  };
+
+  const ensureLocation = async () => {
+    if (location) return location;
+    try {
+      return await requestLocation();
+    } catch {
+      return null;
+    }
   };
 
   const startCamera = async () => {
+    setLocationError("");
+    requestLocation().catch(() => {});
     try {
       setIsCapturing(true);
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -157,7 +252,7 @@ function AttendancePage() {
           setImage(URL.createObjectURL(compressed));
           setCompressedBlob(compressed);
           setCapturedTime(new Date());
-          getLocation();
+          await ensureLocation();
         } else {
           Swal.fire({ icon: "error", title: "Compression Failed" });
         }
@@ -169,10 +264,26 @@ function AttendancePage() {
 
   const submitAttendance = async () => {
     if (isSubmitting) return;
-    if (!compressedBlob || !location) {
+    if (!type) {
+      Swal.fire("Done", "Today's attendance is already complete.", "info");
+      return;
+    }
+    if (!compressedBlob) {
+      Swal.fire("Missing Photo", "Please capture your photo first.", "warning");
+      return;
+    }
+
+    let coords = location;
+    if (!coords && manualLocationInput.trim()) {
+      coords = applyManualLocation();
+    }
+    if (!coords) {
+      coords = await ensureLocation();
+    }
+    if (!coords) {
       Swal.fire(
-        "Missing Data",
-        "Ensure image and location are available before submitting.",
+        "Location required",
+        locationError || "Enable GPS permission or enter coordinates below your photo.",
         "warning"
       );
       return;
@@ -180,9 +291,11 @@ function AttendancePage() {
 
     const formData = new FormData();
     formData.append("type", type);
-    formData.append("location", location);
+    formData.append("location", coords);
     formData.append("comment", comment);
     appendAttendanceImage(formData, compressedBlob);
+
+    const submittedType = type;
 
     try {
       setIsSubmitting(true);
@@ -192,20 +305,54 @@ function AttendancePage() {
         },
       });
 
+      lastSubmitRef.current = submittedType;
+
+      const optimisticEntry = {
+        type: submittedType,
+        timestamp: new Date().toISOString(),
+        location: coords,
+        officeName: detectedOffice?.officeName || "",
+        isInOffice: Boolean(detectedOffice?.isInOffice),
+      };
+
+      if (isSelf) {
+        setType(submittedType === "check-in" ? "check-out" : null);
+      }
+
+      setAttendanceHistory((prev) => mergeAttendanceRecords([], [...prev, optimisticEntry]));
+      setSelectedDate(new Date());
+
       Swal.fire(
         "Success",
-        `${type === "check-in" ? "Checked In" : "Checked Out"} successfully`,
+        submittedType === "check-in"
+          ? "Checked In successfully. Check Out button is ready when you leave."
+          : "Checked Out successfully.",
         "success"
       );
       setImage(null);
       setCompressedBlob(null);
       setLocation("");
       setDetectedOffice(null);
-  setComment('');
+      setManualLocationInput("");
+      setLocationError("");
+      setComment("");
       stopCamera();
-      fetchAttendance();
+      await fetchAttendance();
     } catch (err) {
-      Swal.fire("Failed", "Could not submit attendance", "error");
+      const status = err.response?.status;
+      const apiMsg =
+        err.response?.data?.error ||
+        err.response?.data?.msg ||
+        err.response?.data?.message;
+      let message = apiMsg || "Could not submit attendance. Please try again.";
+
+      if (status === 401) {
+        message = "Session expired. Please log in again.";
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+
+      Swal.fire("Failed", message, "error");
     } finally {
       setIsSubmitting(false); // stop loading
     }
@@ -236,11 +383,12 @@ function AttendancePage() {
         };
       }
 
-      if (entry.type === "check-in") {
+      const entryType = normalizeAttendanceType(entry.type);
+      if (entryType === "check-in") {
         attendanceMap[dateKey].checkin = true;
         attendanceMap[dateKey].inTime = entry.timestamp;
       }
-      if (entry.type === "check-out") {
+      if (entryType === "check-out") {
         attendanceMap[dateKey].checkout = true;
         attendanceMap[dateKey].outTime = entry.timestamp;
       }
@@ -249,10 +397,11 @@ function AttendancePage() {
     }
   });
 
-  // Today's filtered logs (unchanged)
   const filteredLogs = attendanceHistory.filter((entry) =>
     isSameCalendarDay(entry.timestamp, selectedDate)
   );
+
+  const recentLogs = attendanceHistory.slice(0, 50);
 
 // Get current month and year
 const currentYear = now.getFullYear();
@@ -267,17 +416,18 @@ attendanceHistory.forEach((entry) => {
     
     // Check if entry is from current month
     if (entryDate.getFullYear() === currentYear && entryDate.getMonth() === currentMonth) {
-      const dateKey = entryDate.toDateString();
-      
+      const dateKey = getLocalDateKey(entry.timestamp);
+
       if (!currentMonthAttendance[dateKey]) {
-        currentMonthAttendance[dateKey] = { 
-          checkin: false, 
-          checkout: false 
+        currentMonthAttendance[dateKey] = {
+          checkin: false,
+          checkout: false,
         };
       }
-      
-      if (entry.type === "check-in") currentMonthAttendance[dateKey].checkin = true;
-      if (entry.type === "check-out") currentMonthAttendance[dateKey].checkout = true;
+
+      const entryType = normalizeAttendanceType(entry.type);
+      if (entryType === "check-in") currentMonthAttendance[dateKey].checkin = true;
+      if (entryType === "check-out") currentMonthAttendance[dateKey].checkout = true;
     }
   } catch (err) {
     console.error("Error parsing date:", entry.timestamp, err);
@@ -350,7 +500,11 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
             🗂 Task Manager
           </button> */}
           <button
-            onClick={() => setShowCalendarModal(true)}
+            onClick={() => {
+              const latest = recentLogs[0]?.timestamp;
+              if (latest) setCalendarViewDate(new Date(latest));
+              setShowCalendarModal(true);
+            }}
             className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 w-full sm:w-auto"
           >
             📅 Open Calendar View
@@ -507,6 +661,12 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
         </div>
       )}
 
+      <p className="text-xs text-center text-gray-500 mb-2">
+        {attendanceHistory.length > 0
+          ? `${attendanceHistory.length} attendance record${attendanceHistory.length === 1 ? '' : 's'} loaded`
+          : 'No past records loaded — use Calendar View for older months, or contact admin if history is missing'}
+      </p>
+
       <div className="mt-8">
         <h3 className="text-lg font-semibold text-gray-700 mb-3">
           Attendance — {selectedDate.toLocaleDateString(undefined, {
@@ -520,7 +680,23 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
           selectedDate={selectedDate}
         />
         <br></br>
-        <ActivityLog activities={filteredLogs} />
+        <ActivityLog
+          activities={filteredLogs}
+          title="Selected Date Activity"
+          emptyText="No activity on selected date"
+        />
+        {recentLogs.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">
+              All Recent Records ({recentLogs.length})
+            </h3>
+            <ActivityLog
+              activities={recentLogs}
+              title=""
+              emptyText="No past attendance found"
+            />
+          </div>
+        )}
       </div>
       <div className="mt-8">
         <DateStrip
@@ -529,23 +705,40 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
           markedDates={attendanceHistory.map((e) => e.timestamp)}
         />
       </div>
+      {isSelf && type === "check-out" && !isCapturing && (
+        <div className="fixed bottom-24 left-4 right-4 flex justify-center z-30 pointer-events-none">
+          <p className="bg-green-100 text-green-800 text-sm px-4 py-2 rounded-full shadow border border-green-200">
+            Checked in today — tap Check Out when you leave
+          </p>
+        </div>
+      )}
+
       {isSelf && type && !isCapturing && (
         <div className="fixed bottom-6 left-6 right-6 flex justify-center z-30">
           <button
-            onClick={() => {
-              getLocation();
-              startCamera();
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition"
+            onClick={startCamera}
+            className={`${
+              type === "check-out"
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            } text-white font-semibold py-3 px-8 rounded-full shadow-lg transition`}
           >
             {type === "check-in" ? "Check In" : "Check Out"}
           </button>
         </div>
       )}
 
+      {isSelf && !type && !isCapturing && (
+        <div className="fixed bottom-6 left-6 right-6 flex justify-center z-30">
+          <p className="bg-white/90 text-gray-700 text-sm px-4 py-3 rounded-full shadow border border-gray-200">
+            Today&apos;s check-in and check-out are complete.
+          </p>
+        </div>
+      )}
+
       {isCapturing && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl space-y-4 text-center">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-end sm:items-center justify-center p-2 sm:p-4">
+          <div className="bg-white w-full max-w-sm max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl shadow-2xl space-y-4 text-center">
             {!image ? (
               <>
                 <CameraView ref={videoRef} />
@@ -589,19 +782,68 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                       {capturedTime.toLocaleTimeString()} on{" "}
                       {capturedTime.toLocaleDateString()}
                     </p>
-                    {location && (
+                    {locationLoading && (
+                      <p className="text-amber-600">Fetching GPS location...</p>
+                    )}
+                    {location && !locationLoading && (
                       <p>
                         <span className="font-medium">Location:</span>{" "}
                         {location}
                       </p>
                     )}
-                    {detectedOffice && (
+                    {detectedOffice && location && (
                       <p>
                         <span className="font-medium">Office:</span>{" "}
                         <span className={detectedOffice.isInOffice ? "text-green-600 font-semibold" : "text-amber-600"}>
                           {formatOfficeDisplayName(detectedOffice.officeName)}
                         </span>
                       </p>
+                    )}
+                    {!location && !locationLoading && locationError && (
+                      <p className="text-red-600 text-left text-xs">{locationError}</p>
+                    )}
+                    {!location && !locationLoading && (
+                      <div className="mt-3 text-left space-y-3 border-t pt-3">
+                        <p className="text-xs text-gray-600">
+                          GPS not available. If you are at office, tap your office below:
+                        </p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {OFFICE_LOCATIONS.map((office) => (
+                            <button
+                              key={office.name}
+                              type="button"
+                              onClick={() => applyOfficeLocation(office)}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium"
+                            >
+                              I&apos;m at {office.branchName || office.name} Office
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500">Or enter coordinates manually:</p>
+                        <input
+                          type="text"
+                          value={manualLocationInput}
+                          onChange={(e) => setManualLocationInput(e.target.value)}
+                          placeholder="e.g. 8.7237565, 77.722212"
+                          className="w-full border rounded p-2 text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => requestLocation().catch(() => {})}
+                            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-lg text-sm"
+                          >
+                            Retry GPS
+                          </button>
+                          <button
+                            type="button"
+                            onClick={applyManualLocation}
+                            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg text-sm"
+                          >
+                            Use coordinates
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -620,8 +862,12 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                   </button>
                   <button
                     onClick={submitAttendance}
-                    className={`bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
+                    disabled={isSubmitting || locationLoading || !location}
+                    className={`bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg ${
+                      isSubmitting || locationLoading || !location
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
                     {isSubmitting
                       ? "Submitting..."

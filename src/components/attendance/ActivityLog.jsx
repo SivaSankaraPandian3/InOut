@@ -1,18 +1,20 @@
 import React from 'react';
 import { formatOfficeDisplayName, getLogOfficeName } from '../../utils/officeLocations';
 
-function ActivityLog({ activities }) {
+function ActivityLog({ activities, title = 'Your Activity', emptyText = 'No activity on selected date' }) {
   if (!activities || activities.length === 0) {
     return (
       <div className="text-center text-sm text-gray-400">
-        No activity on selected date
+        {emptyText}
       </div>
     );
   }
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-2">Your Activity</h3>
+      {title ? (
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">{title}</h3>
+      ) : null}
       {activities.map((item, index) => (
         <div
           key={index}

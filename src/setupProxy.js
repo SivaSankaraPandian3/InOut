@@ -1,47 +1,53 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-/** React pages — must not be proxied to the API server. */
-const isAttendancePageRequest = (req) => {
-  if (req.method !== 'GET') return false;
-  const path = req.url.split('?')[0];
-  const accept = req.headers.accept || '';
-  if (!accept.includes('text/html')) return false;
+const API_TARGET =
+  process.env.REACT_APP_API_PROXY_TARGET ||
+  'https://uc-attendance-system-1ts2.onrender.com';
 
-  if (path === '/attendance') return true;
+const ATTENDANCE_API_SEGMENTS = new Set(['me', 'all', 'last', 'date', 'user']);
 
-  // /attendance/:userId (admin view) — not /attendance/me, /attendance/user/...
-  if (/^\/attendance\/(me|all|last|date|user)(\/|$)/.test(path)) return false;
-  if (/^\/attendance\/[^/]+$/.test(path)) return true;
+/** Proxy API only — never proxy React page GET /attendance or GET /attendance/:userId */
+const shouldProxy = (pathname, req) => {
+  if (
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/api-docs') ||
+    pathname.startsWith('/users') ||
+    pathname.startsWith('/schedules') ||
+    pathname.startsWith('/employeesAttendance') ||
+    pathname.startsWith('/uploads') ||
+    pathname === '/ping' ||
+    pathname === '/version'
+  ) {
+    return true;
+  }
 
-  return false;
+  if (!pathname.startsWith('/attendance')) {
+    return false;
+  }
+
+  // React page: GET /attendance
+  if (pathname === '/attendance' && req.method === 'GET') {
+    return false;
+  }
+
+  // React page: GET /attendance/:mongoId (not /attendance/me, /attendance/user/...)
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length === 2 && segments[0] === 'attendance' && req.method === 'GET') {
+    if (!ATTENDANCE_API_SEGMENTS.has(segments[1])) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 module.exports = function (app) {
   app.use(
-    createProxyMiddleware(
-      [
-        '/auth',
-        '/api',
-        '/api-docs',
-        '/users',
-        '/attendance',
-        '/schedules',
-        '/employeesAttendance',
-        '/uploads',
-        '/ping',
-        '/version',
-      ],
-      {
-        target: 'https://uc-attendance-system-1ts2.onrender.com',
-        changeOrigin: true,
-        secure: true,
-        bypass(req) {
-          if (isAttendancePageRequest(req)) {
-            return '/index.html';
-          }
-          return null;
-        },
-      }
-    )
+    createProxyMiddleware(shouldProxy, {
+      target: API_TARGET,
+      changeOrigin: true,
+      secure: true,
+    })
   );
 };

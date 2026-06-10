@@ -1,5 +1,9 @@
 import React from 'react';
-import { getLocalDateKey, isSameCalendarDay } from '../../utils/attendanceDate';
+import {
+  getLocalDateKey,
+  isSameCalendarDay,
+  normalizeAttendanceType,
+} from '../../utils/attendanceDate';
 
 function formatTime(timestamp) {
   if (!timestamp) return '--:--';
@@ -13,8 +17,12 @@ function AttendanceCards({ attendanceData = [], selectedDate = new Date() }) {
     isSameCalendarDay(entry.timestamp, selectedDate)
   );
 
-  const checkIn = dayEntries.find((entry) => entry.type === 'check-in');
-  const checkOut = dayEntries.find((entry) => entry.type === 'check-out');
+  const checkIn = dayEntries.find(
+    (entry) => normalizeAttendanceType(entry.type) === 'check-in'
+  );
+  const checkOut = dayEntries.find(
+    (entry) => normalizeAttendanceType(entry.type) === 'check-out'
+  );
 
   const totalWorkingDays = new Set(
     attendanceData.map((entry) => getLocalDateKey(entry.timestamp)).filter(Boolean)
