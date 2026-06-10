@@ -170,7 +170,17 @@ const Dashboard = () => {
       {summary && <DashboardCards data={summary} />}
 
       {fetchError && (
-        <div className="uc-alert uc-alert-error" role="alert">
+        <div
+          role="alert"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            background: '#fef2f2',
+            color: '#b91c1c',
+            border: '1px solid #fecaca',
+          }}
+        >
           {fetchError}
         </div>
       )}
@@ -218,7 +228,7 @@ const Dashboard = () => {
         </button>
       </div>
 
-      <RecentAttendanceTable logs={filteredLogs} />
+      <RecentAttendanceTable logs={filteredLogs} selectedDate={dateFilter} />
       <AbsentUsersList allUsers={usersForBranch} logs={logsForSelectedDate} />
     </div>
   );

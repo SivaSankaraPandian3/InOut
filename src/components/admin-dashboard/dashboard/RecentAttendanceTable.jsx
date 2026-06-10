@@ -6,7 +6,7 @@ import {
   resolveAttendanceImageUrl,
 } from "../../../utils/attendanceImage";
 
-const RecentAttendanceTable = ({ logs = [] }) => {
+const RecentAttendanceTable = ({ logs = [], selectedDate = '' }) => {
   const [modalImage, setModalImage] = useState(null);
 
   const groupLogsByEmployeeAndDate = (logList) => {
@@ -57,7 +57,9 @@ const RecentAttendanceTable = ({ logs = [] }) => {
           {groupedLogs.length === 0 ? (
             <tr>
               <td colSpan="8" className="uc-table-empty">
-                No recent attendance
+                {selectedDate
+                  ? `No attendance on ${selectedDate}. Pick another date or click Refresh Data.`
+                  : 'No recent attendance'}
               </td>
             </tr>
           ) : (
