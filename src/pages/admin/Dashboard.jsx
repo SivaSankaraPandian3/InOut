@@ -11,25 +11,11 @@ import { Sync } from '@mui/icons-material';
 import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
 import { isSameLocalDay, localDateYMD } from '../../utils/localDate';
 import {
-  activeEmployees,
   enrichLogNames,
   filterLogsByDate,
   mapRawAttendanceRecords,
   normalizeLogs,
-  presentEmployeeIds,
 } from '../../utils/dashboardLogs';
-
-const buildSummaryFromLogs = (users, logs, dateFilter) => {
-  const employees = activeEmployees(users);
-  const todayLogs = filterLogsByDate(logs, dateFilter);
-  const present = presentEmployeeIds(todayLogs).size;
-  const total = employees.length;
-  return {
-    totalEmployees: total,
-    presentToday: present,
-    absentToday: Math.max(0, total - present),
-  };
-};
 
 const fetchDashboardLogs = async (dateFilter, headers, users = []) => {
   const datedUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?date=${encodeURIComponent(dateFilter)}&_=${Date.now()}`;
@@ -109,44 +95,37 @@ const Dashboard = () => {
         const usersRes = await axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers });
         users = Array.isArray(usersRes.data) ? usersRes.data : [];
         setAllUsers(users);
-      } catch (err) {
-        console.error('Dashboard users error:', err);
+      } catch (userErr) {
+        console.error('Dashboard users error:', userErr);
+        setFetchError('Could not load employee list. Try Refresh Data.');
       }
 
-      let summaryLoaded = false;
       try {
         const summaryRes = await axios.get(API_ENDPOINTS.getAdminSummary, { headers });
         setSummary(summaryRes.data || {});
-        summaryLoaded = true;
-      } catch (err) {
-        console.error('Dashboard summary error:', err);
-        const msg = err.response?.data?.msg || err.response?.data?.error;
-        if (err.response?.status === 403) {
-          setFetchError('Admin access only. Log out and sign in with an admin account.');
-        } else if (err.response?.status === 401) {
-          setFetchError('Session expired. Please log in again.');
-        } else if (msg) {
-          setFetchError(msg);
-        }
+      } catch (summaryErr) {
+        console.error('Dashboard summary error:', summaryErr);
+        setSummary(null);
+        setFetchError((prev) => prev || 'Summary cards unavailable. Attendance table may still load below.');
       }
 
       try {
-        const logsData = enrichLogNames(
-          await fetchDashboardLogs(dateFilter, headers, users),
-          users
-        );
+        const logsRaw = await fetchDashboardLogs(dateFilter, headers, users);
+        const logsData = enrichLogNames(logsRaw, users);
         setLogs(logsData);
         setFilteredLogs(logsData);
-        if (!summaryLoaded && logsData.length > 0 && users.length > 0) {
-          setSummary(buildSummaryFromLogs(users, logsData, dateFilter));
-          setFetchError('');
-        } else if (logsData.length > 0) {
-          setFetchError('');
-        }
       } catch (logErr) {
         console.error('Dashboard logs error:', logErr);
+        setLogs([]);
+        setFilteredLogs([]);
         const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
-        setFetchError((prev) => prev || msg || 'Could not load attendance for this date. Try Refresh Data.');
+        if (logErr.response?.status === 403) {
+          setFetchError('Admin access only. Log out and sign in with an admin account.');
+        } else if (logErr.response?.status === 401) {
+          setFetchError('Session expired. Please log in again.');
+        } else {
+          setFetchError((prev) => prev || msg || 'Could not load attendance for this date. Try Refresh Data.');
+        }
       } finally {
         setLoading(false);
       }
