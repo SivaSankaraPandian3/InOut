@@ -48,7 +48,7 @@ export const parseLocationCoords = (locationString) => {
   return { lat, lon };
 };
 
-/** GPS within office radius → branch name; otherwise Outside Office. */
+/** GPS only — profile branch is NOT used. Nearest office within radius, else Outside Office. */
 export const resolveOfficeFromLocation = (locationString) => {
   const coords = parseLocationCoords(locationString);
   if (!coords) return null;
