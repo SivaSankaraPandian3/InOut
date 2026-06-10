@@ -321,7 +321,6 @@
 .uc-users-wrap {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
 }
 
 .uc-users-stats {
@@ -383,12 +382,13 @@
 .uc-actions-dropdown {
   position: fixed;
   z-index: 1000;
-  min-width: 10rem;
-  background: #fff;
+  min-width: 10.5rem;
+  background-color: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   padding: 4px 0;
+  isolation: isolate;
 }
 
 .uc-dropdown-item {
@@ -397,7 +397,7 @@
   box-sizing: border-box;
   padding: 0.5rem 1rem;
   border: none;
-  background: transparent;
+  background-color: #ffffff;
   text-align: left;
   font-size: 0.875rem;
   color: #374151;
@@ -465,7 +465,46 @@
 }
 
 .uc-users-table tbody tr.inactive {
-  opacity: 0.6;
+  background-color: #fef2f2;
+}
+
+.uc-users-table tbody tr.inactive:hover {
+  background-color: #fee2e2;
+}
+
+.uc-users-table th.uc-users-status-col,
+.uc-users-table td.uc-users-status-cell {
+  overflow: visible;
+  white-space: nowrap;
+  width: 5.5rem;
+  min-width: 5.5rem;
+}
+
+.uc-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.uc-status-badge.is-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.uc-status-badge.is-inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.uc-users-table td.uc-users-actions-cell {
+  overflow: visible;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  text-align: right;
 }
 
 .uc-users-table td.uc-users-branch-cell {

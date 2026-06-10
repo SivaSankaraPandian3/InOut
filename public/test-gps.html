@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InOut — GPS Office Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; }
+    button, input { font-size: 1rem; padding: 0.5rem 0.75rem; margin: 0.25rem 0; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+    .ok { color: #15803d; font-weight: 600; }
+    .bad { color: #b45309; font-weight: 600; }
+    pre { background: #f4f4f5; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>GPS → Office name (dummy test)</h1>
+  <p>Paste coordinates or pick a sample. Matches backend <code>officeLocation.js</code>.</p>
+
+  <label>Latitude, Longitude</label><br />
+  <input id="coords" type="text" style="width:100%;max-width:400px" placeholder="8.7237565,77.722212" />
+
+  <div class="row">
+    <button type="button" data-coords="8.7237565,77.722212">Tirunelveli office</button>
+    <button type="button" data-coords="8.7237012,77.7221980">Tirunelveli nearby</button>
+    <button type="button" data-coords="12.94198577,80.21012198">Pallikarani</button>
+    <button type="button" data-coords="12.9912597,80.2201616">Velachery</button>
+    <button type="button" data-coords="13.0827,80.2707">Outside (Chennai home)</button>
+  </div>
+
+  <button type="button" id="run">Check office</button>
+  <p id="result"></p>
+
+  <h2>Dummy attendance JSON</h2>
+  <pre id="sample"></pre>
+
+  <script>
+    const OFFICES = [
+      { name: 'Pallikaranai', branchName: 'Pallikaranai', latitude: 12.94198577, longitude: 80.21012198, radiusMeters: 200 },
+      { name: 'Velechery', branchName: 'Velachery', latitude: 12.9912597, longitude: 80.2201616, radiusMeters: 400 },
+      { name: 'Tirunelveli', branchName: 'Tirunelveli', latitude: 8.7237565, longitude: 77.722212, radiusMeters: 800 },
+    ];
+
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = (d) => (d * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    function resolve(coords) {
+      const [lat, lon] = coords.split(',').map(Number);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      let best = null;
+      for (const o of OFFICES) {
+        const d = haversineMeters(lat, lon, o.latitude, o.longitude);
+        if (d <= o.radiusMeters && (!best || d < best.distanceMeters)) {
+          best = { officeName: o.branchName, isInOffice: true, distanceMeters: Math.round(d) };
+        }
+      }
+      return best || { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
+    }
+
+    const input = document.getElementById('coords');
+    const result = document.getElementById('result');
+    const sample = document.getElementById('sample');
+
+    document.querySelectorAll('[data-coords]').forEach((btn) => {
+      btn.addEventListener('click', () => { input.value = btn.dataset.coords; });
+    });
+
+    document.getElementById('run').addEventListener('click', () => {
+      const r = resolve(input.value.trim());
+      if (!r) {
+        result.textContent = 'Invalid coordinates';
+        return;
+      }
+      result.innerHTML = r.isInOffice
+        ? `<span class="ok">${r.officeName}</span> (${r.distanceMeters} m from pin)`
+        : `<span class="bad">${r.officeName}</span>`;
+    });
+
+    const dummy = {
+      employeeName: 'Sakthi Naren T (test)',
+      type: 'check-in',
+      location: '8.7237565,77.722212',
+      officeName: 'Outside Office',
+      timestamp: new Date().toISOString(),
+    };
+    dummy.resolved = resolve(dummy.location);
+    sample.textContent = JSON.stringify(dummy, null, 2);
+  </script>
+</body>
+</html>

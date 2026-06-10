@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { MoreVertical, UserPlus } from 'lucide-react';
@@ -318,8 +319,8 @@ const AllUsers = () => {
               <th style={{ width: '12%' }}>Branch</th>
               <th style={{ width: '14%' }}>Dept</th>
               <th style={{ width: '18%' }}>Role</th>
-              <th style={{ width: '10%' }}>Status</th>
-              <th style={{ width: '2.5rem' }} />
+              <th className="uc-users-status-col">Status</th>
+              <th className="uc-users-actions-cell" />
             </tr>
           </thead>
           <tbody>
@@ -357,20 +358,12 @@ const AllUsers = () => {
                     {getPrimaryWork(user).position || user.position || '-'}
                     {getUserWorks(user).length > 1 && ` +${getUserWorks(user).length - 1}`}
                 </td>
-                <td>
-                  <span style={{
-                    display: 'inline-block',
-                    padding: '2px 8px',
-                    borderRadius: 9999,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    background: user.isActive ? '#dcfce7' : '#fee2e2',
-                    color: user.isActive ? '#166534' : '#991b1b',
-                  }}>
+                <td className="uc-users-status-cell">
+                  <span className={`uc-status-badge${user.isActive ? ' is-active' : ' is-inactive'}`}>
                     {user.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                <td className="uc-users-actions-cell" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     onClick={(e) => toggleActionMenu(e, user)}
@@ -387,7 +380,7 @@ const AllUsers = () => {
           </table>
       </div>
 
-      {openMenuId && menuAnchor && menuUser && (
+      {openMenuId && menuAnchor && menuUser && createPortal(
         <>
           <div className="uc-dropdown-backdrop" onClick={closeActionMenu} role="presentation" />
           <div
@@ -429,7 +422,8 @@ const AllUsers = () => {
               {menuUser.isActive ? 'Disable' : 'Enable'}
             </button>
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {showPastModal && (

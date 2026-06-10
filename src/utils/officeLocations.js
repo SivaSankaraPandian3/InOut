@@ -2,14 +2,14 @@
 export const OFFICE_LOCATIONS = [
   {
     name: 'Pallikaranai',
-    branchName: 'Chennai Pallikarani',
+    branchName: 'Pallikaranai',
     latitude: 12.94198577,
     longitude: 80.21012198,
     radiusMeters: 200,
   },
   {
     name: 'Velechery',
-    branchName: 'Chennai Velachery',
+    branchName: 'Velachery',
     latitude: 12.9912597,
     longitude: 80.2201616,
     radiusMeters: 400,
@@ -67,12 +67,21 @@ export const resolveOfficeFromLocation = (locationString, preferredOfficeName = 
   return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
 };
 
+/** Show short office label (e.g. Pallikaranai, not Chennai Pallikarani). */
+export const formatOfficeDisplayName = (name) => {
+  if (!name || name === '—') return name;
+  const n = String(name).trim();
+  if (/chennai\s+pallikar/i.test(n)) return 'Pallikaranai';
+  if (/chennai\s+velach/i.test(n) || /^velechery$/i.test(n)) return 'Velachery';
+  return n;
+};
+
 /** Dashboard / reports: prefer GPS-based branch when coordinates exist. */
 export const getLogOfficeName = (log) => {
   if (!log) return '—';
   if (log.location) {
     const resolved = resolveOfficeFromLocation(log.location);
-    if (resolved?.isInOffice) return resolved.officeName;
+    if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
   }
-  return log.officeName || '—';
+  return formatOfficeDisplayName(log.officeName) || '—';
 };

@@ -15,7 +15,7 @@ import ActivityLog from "../../components/attendance/ActivityLog";
 import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
 import { appendAttendanceImage } from "../../utils/attendanceImage";
-import { resolveOfficeFromLocation } from "../../utils/officeLocations";
+import { formatOfficeDisplayName, resolveOfficeFromLocation } from "../../utils/officeLocations";
 import { extractBranchFromUser } from "../../utils/branches";
 
 const branchToOfficeName = (branch) => {
@@ -603,7 +603,7 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
                       <p>
                         <span className="font-medium">Office:</span>{" "}
                         <span className={detectedOffice.isInOffice ? "text-green-600 font-semibold" : "text-amber-600"}>
-                          {detectedOffice.officeName}
+                          {formatOfficeDisplayName(detectedOffice.officeName)}
                         </span>
                       </p>
                     )}

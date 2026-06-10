@@ -872,9 +872,9 @@ const Report = () => {
                                     size="small"
                                     sx={{ mt: 0.5 }}
                                     color={
-                                      branchLabel === 'Chennai Velachery'
+                                      branchLabel === 'Velachery' || branchLabel === 'Chennai Velachery'
                                         ? 'primary'
-                                        : branchLabel === 'Chennai Pallikarani'
+                                        : branchLabel === 'Pallikaranai' || branchLabel === 'Chennai Pallikarani'
                                           ? 'success'
                                           : 'warning'
                                     }
