@@ -15,8 +15,6 @@ import {
   DUMMY_USERS,
 } from '../../utils/dummyAttendanceData';
 
-const IS_DEV = process.env.NODE_ENV === 'development';
-
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -208,21 +206,19 @@ const Dashboard = () => {
           Refresh Data
         </button>
 
-        {IS_DEV && (
-          <button
-            type="button"
-            className="uc-btn uc-btn-outline"
-            onClick={() => {
-              setSummary(DUMMY_DASHBOARD_SUMMARY);
-              setLogs(DUMMY_ATTENDANCE_LOGS);
-              setFilteredLogs(DUMMY_ATTENDANCE_LOGS);
-              setAllUsers(DUMMY_USERS);
-              setLoading(false);
-            }}
-          >
-            Load Test Data
-          </button>
-        )}
+        <button
+          type="button"
+          className="uc-btn uc-btn-outline"
+          onClick={() => {
+            setSummary(DUMMY_DASHBOARD_SUMMARY);
+            setLogs(DUMMY_ATTENDANCE_LOGS);
+            setFilteredLogs(DUMMY_ATTENDANCE_LOGS);
+            setAllUsers(DUMMY_USERS);
+            setLoading(false);
+          }}
+        >
+          Load Test Data
+        </button>
       </div>
 
       <RecentAttendanceTable logs={filteredLogs} />
