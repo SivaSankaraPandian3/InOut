@@ -16,6 +16,15 @@ import CameraView from "../../components/attendance/CameraView";
 import { compressImage } from "../../components/attendance/utils";
 import { appendAttendanceImage } from "../../utils/attendanceImage";
 import { resolveOfficeFromLocation } from "../../utils/officeLocations";
+import { extractBranchFromUser } from "../../utils/branches";
+
+const branchToOfficeName = (branch) => {
+  const b = String(branch || "").toLowerCase();
+  if (b.includes("tirunel") || b.includes("tvl")) return "Tirunelveli";
+  if (b.includes("pallikar")) return "Pallikaranai";
+  if (b.includes("velach") || b.includes("velech")) return "Velechery";
+  return null;
+};
 
 function AttendancePage() {
   const navigate = useNavigate();
@@ -101,8 +110,9 @@ function AttendancePage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
+        const preferredOffice = branchToOfficeName(extractBranchFromUser(user));
         setLocation(coords);
-        setDetectedOffice(resolveOfficeFromLocation(coords));
+        setDetectedOffice(resolveOfficeFromLocation(coords, preferredOffice));
       },
       () =>
         Swal.fire({

@@ -17,9 +17,9 @@ export const OFFICE_LOCATIONS = [
   {
     name: 'Tirunelveli',
     branchName: 'Tirunelveli',
-    latitude: 8.6988125,
-    longitude: 77.7269375,
-    radiusMeters: 750,
+    latitude: 8.7237565,
+    longitude: 77.722212,
+    radiusMeters: 800,
     address:
       '3rd Floor, Fab Sapphire Towers, 29/5, S Bypass Rd, Vasanth Nagar, Tirunelveli, Tamil Nadu 627005',
     plusCode: 'MPXG+GQ Tirunelveli',
@@ -39,7 +39,7 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
 };
 
 /** Within branch radius → branch name; otherwise Outside Office. */
-export const resolveOfficeFromLocation = (locationString) => {
+export const resolveOfficeFromLocation = (locationString, preferredOfficeName = null) => {
   if (!locationString || !String(locationString).includes(',')) return null;
   const [lat, lon] = String(locationString).split(',').map(Number);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
@@ -48,7 +48,11 @@ export const resolveOfficeFromLocation = (locationString) => {
 
   for (const office of OFFICE_LOCATIONS) {
     const distance = haversineMeters(lat, lon, office.latitude, office.longitude);
-    if (distance <= office.radiusMeters) {
+    let radius = office.radiusMeters;
+    if (preferredOfficeName && office.name === preferredOfficeName) {
+      radius = Math.round(radius * 1.5);
+    }
+    if (distance <= radius) {
       if (!best || distance < best.distanceMeters) {
         best = {
           officeName: office.branchName || office.name,
