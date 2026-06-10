@@ -55,7 +55,13 @@ const Dashboard = () => {
         setAllUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
       } catch (err) {
         console.error('Dashboard summary error:', err);
-        setFetchError('Could not load dashboard summary. Please log in again or refresh.');
+        if (err.response?.status === 403) {
+          setFetchError('Admin access only. Log out and sign in with an admin account.');
+        } else if (err.response?.status === 401) {
+          setFetchError('Session expired. Please log in again.');
+        } else {
+          setFetchError('Could not load dashboard summary. Please refresh or try again.');
+        }
       }
     };
 
@@ -101,8 +107,14 @@ const Dashboard = () => {
         console.error('Dashboard logs error:', err);
         setLogs([]);
         setFilteredLogs([]);
-        const msg = err.response?.data?.msg || err.response?.data?.error;
-        setFetchError(msg || 'Could not load attendance. Check login or try Refresh Data.');
+        if (err.response?.status === 403) {
+          setFetchError('Admin access only. Log out and sign in with an admin account.');
+        } else if (err.response?.status === 401) {
+          setFetchError('Session expired. Please log in again.');
+        } else {
+          const msg = err.response?.data?.msg || err.response?.data?.error;
+          setFetchError(msg || 'Could not load attendance. Try Refresh Data.');
+        }
       } finally {
         setLoading(false);
       }

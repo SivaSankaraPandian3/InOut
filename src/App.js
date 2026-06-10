@@ -39,7 +39,7 @@ import RelievingLetter from './pages/admin/RelievingLetter';
 import InternshipLetter from './pages/admin/InternshipLetter';
 import InternshipOfferLetter from './pages/admin/InternshipOfferLetter';
 import AllLetters from './pages/admin/AllLetters';
-import ProtectedRoute from './components/ProtectedRoute';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 import PendingUsers from './pages/admin/PendingUsers';
 import ApiDocsPage from './pages/admin/ApiDocsPage';
 
@@ -84,7 +84,7 @@ function App() {
 
         {/* Protected Admin Layout Wrapper */}
         <Route element={
-          <ProtectedRoute><Layout /></ProtectedRoute>
+          <AdminProtectedRoute><Layout /></AdminProtectedRoute>
           }>
           <Route path="/admin" element={<DashSavi />} />
           <Route path="/dashboard" element={<Dashboard />} />
