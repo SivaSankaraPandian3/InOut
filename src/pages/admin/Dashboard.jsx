@@ -124,33 +124,20 @@ const Dashboard = () => {
         }
 
         const todayStr = localDateYMD();
-        let summaryData = null;
-
-        try {
-          const summaryRes = await axios.get(API_ENDPOINTS.getAdminSummary, { headers });
-          summaryData = summaryRes.data || null;
-        } catch (summaryErr) {
-          console.warn('Dashboard summary API failed, using client-side counts:', summaryErr.message);
-        }
-
-        if (!summaryData || summaryData.totalEmployees == null) {
-          let todayLogs = logsData;
-          if (!isSameLocalDay(dateFilter, todayStr)) {
-            try {
-              todayLogs = enrichLogNames(
-                await fetchDashboardLogs(todayStr, headers, users),
-                users
-              );
-            } catch {
-              todayLogs = [];
-            }
+        let todayLogs = logsData;
+        if (!isSameLocalDay(dateFilter, todayStr)) {
+          try {
+            todayLogs = enrichLogNames(
+              await fetchDashboardLogs(todayStr, headers, users),
+              users
+            );
+          } catch {
+            todayLogs = [];
           }
-          summaryData = buildSummaryFromLogs(todayLogs, users, todayStr);
         }
-
-        setSummary(summaryData);
-        if (summaryData?.totalEmployees != null) {
-          setFetchError((prev) => (prev && !logsData.length ? prev : ''));
+        setSummary(buildSummaryFromLogs(todayLogs, users, todayStr));
+        if (logsData.length > 0) {
+          setFetchError((prev) => (prev?.includes('employee list') ? prev : ''));
         }
       } finally {
         setLoading(false);
