@@ -90,44 +90,42 @@ const Dashboard = () => {
         Pragma: 'no-cache',
       };
 
+      let users = [];
       try {
-        const [summaryRes, usersRes] = await Promise.all([
-          axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
-          axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
-        ]);
-
-        const users = Array.isArray(usersRes.data) ? usersRes.data : [];
-        setSummary(summaryRes.data || {});
+        const usersRes = await axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers });
+        users = Array.isArray(usersRes.data) ? usersRes.data : [];
         setAllUsers(users);
-
-        let logsRaw = [];
-        try {
-          logsRaw = await fetchDashboardLogs(dateFilter, headers, users);
-        } catch (logErr) {
-          console.error('Dashboard logs error:', logErr);
-          const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
-          if (logErr.response?.status === 403) {
-            setFetchError('Admin access only. Log out and sign in with an admin account.');
-          } else if (logErr.response?.status === 401) {
-            setFetchError('Session expired. Please log in again.');
-          } else {
-            setFetchError(msg || 'Could not load attendance for this date. Try Refresh Data.');
-          }
-        }
-
-        const logsData = enrichLogNames(logsRaw, users);
-        setLogs(logsData);
-        setFilteredLogs(logsData);
       } catch (err) {
-        console.error('Dashboard loading error:', err);
+        console.error('Dashboard users error:', err);
+      }
+
+      try {
+        const summaryRes = await axios.get(API_ENDPOINTS.getAdminSummary, { headers });
+        setSummary(summaryRes.data || {});
+      } catch (err) {
+        console.error('Dashboard summary error:', err);
+        const msg = err.response?.data?.msg || err.response?.data?.error;
         if (err.response?.status === 403) {
           setFetchError('Admin access only. Log out and sign in with an admin account.');
         } else if (err.response?.status === 401) {
           setFetchError('Session expired. Please log in again.');
-        } else {
-          const msg = err.response?.data?.msg || err.response?.data?.error;
-          setFetchError(msg || 'Could not load dashboard. Try Refresh Data.');
+        } else if (msg) {
+          setFetchError(msg);
         }
+      }
+
+      try {
+        const logsData = enrichLogNames(
+          await fetchDashboardLogs(dateFilter, headers, users),
+          users
+        );
+        setLogs(logsData);
+        setFilteredLogs(logsData);
+        if (logsData.length > 0) setFetchError('');
+      } catch (logErr) {
+        console.error('Dashboard logs error:', logErr);
+        const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
+        setFetchError((prev) => prev || msg || 'Could not load attendance for this date. Try Refresh Data.');
       } finally {
         setLoading(false);
       }
