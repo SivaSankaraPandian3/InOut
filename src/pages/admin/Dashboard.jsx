@@ -13,10 +13,11 @@ import { isSameLocalDay, localDateYMD } from '../../utils/localDate';
 import {
   enrichLogNames,
   filterLogsByDate,
+  mapRawAttendanceRecords,
   normalizeLogs,
 } from '../../utils/dashboardLogs';
 
-const fetchDashboardLogs = async (dateFilter, headers) => {
+const fetchDashboardLogs = async (dateFilter, headers, users = []) => {
   const datedUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?date=${encodeURIComponent(dateFilter)}&_=${Date.now()}`;
   try {
     const datedRes = await axios.get(datedUrl, { headers });
@@ -27,7 +28,7 @@ const fetchDashboardLogs = async (dateFilter, headers) => {
   }
 
   try {
-    const wideUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?days=120&_=${Date.now()}`;
+    const wideUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?days=365&_=${Date.now()}`;
     const wideRes = await axios.get(wideUrl, { headers });
     const filtered = filterLogsByDate(normalizeLogs(wideRes.data), dateFilter);
     if (filtered.length > 0) return filtered;
@@ -40,7 +41,15 @@ const fetchDashboardLogs = async (dateFilter, headers) => {
       `${API_ENDPOINTS.getAttendanceByDate(dateFilter)}?_=${Date.now()}`,
       { headers }
     );
-    return normalizeLogs(byDateRes.data);
+    const byDate = normalizeLogs(byDateRes.data);
+    if (byDate.length > 0) return byDate;
+  } catch {
+    /* try full history */
+  }
+
+  try {
+    const allRes = await axios.get(`${API_ENDPOINTS.getAttendanceAll}?_=${Date.now()}`, { headers });
+    return filterLogsByDate(mapRawAttendanceRecords(normalizeLogs(allRes.data), users), dateFilter);
   } catch {
     return [];
   }
@@ -82,30 +91,42 @@ const Dashboard = () => {
       };
 
       try {
-        const [summaryRes, usersRes, logsRaw] = await Promise.all([
+        const [summaryRes, usersRes] = await Promise.all([
           axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
           axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
-          fetchDashboardLogs(dateFilter, headers),
         ]);
 
         const users = Array.isArray(usersRes.data) ? usersRes.data : [];
-        const logsData = enrichLogNames(logsRaw, users);
-
         setSummary(summaryRes.data || {});
         setAllUsers(users);
+
+        let logsRaw = [];
+        try {
+          logsRaw = await fetchDashboardLogs(dateFilter, headers, users);
+        } catch (logErr) {
+          console.error('Dashboard logs error:', logErr);
+          const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
+          if (logErr.response?.status === 403) {
+            setFetchError('Admin access only. Log out and sign in with an admin account.');
+          } else if (logErr.response?.status === 401) {
+            setFetchError('Session expired. Please log in again.');
+          } else {
+            setFetchError(msg || 'Could not load attendance for this date. Try Refresh Data.');
+          }
+        }
+
+        const logsData = enrichLogNames(logsRaw, users);
         setLogs(logsData);
         setFilteredLogs(logsData);
       } catch (err) {
         console.error('Dashboard loading error:', err);
-        setLogs([]);
-        setFilteredLogs([]);
         if (err.response?.status === 403) {
           setFetchError('Admin access only. Log out and sign in with an admin account.');
         } else if (err.response?.status === 401) {
           setFetchError('Session expired. Please log in again.');
         } else {
           const msg = err.response?.data?.msg || err.response?.data?.error;
-          setFetchError(msg || 'Could not load attendance. Try Refresh Data.');
+          setFetchError(msg || 'Could not load dashboard. Try Refresh Data.');
         }
       } finally {
         setLoading(false);
