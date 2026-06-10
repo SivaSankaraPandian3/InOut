@@ -749,7 +749,7 @@ const Report = () => {
 
 
           <Grid container spacing={3} mb={4}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <DatePicker
                 views={["year", "month"]}
                 openTo="month"
@@ -765,7 +765,7 @@ const Report = () => {
                 slotProps={{ textField: { fullWidth: true } }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 label="Search Employee"
@@ -781,7 +781,7 @@ const Report = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid size={{ xs: 12, md: 2 }}>
               <TextField
                 select
                 fullWidth
@@ -796,7 +796,7 @@ const Report = () => {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
 
               <Button variant="contained" color="primary" onClick={downloadDetailedExcel}>
                 Download Detailed Excel
@@ -878,8 +878,8 @@ const Report = () => {
                       <CardContent>
                         {/* Employee Summary Section */}
                         <Grid container spacing={3} mb={4}>
-                          <Grid item xs={12} md={4}>
-                            <Stack direction="row" spacing={3} alignItems="center">
+                          <Grid size={{ xs: 12, md: 4 }}>
+                            <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
                               <Avatar sx={{ width: 60, height: 60 }}>
                                 <PersonIcon fontSize="large" />
                               </Avatar>
@@ -907,8 +907,7 @@ const Report = () => {
                                   />
                                 )}
                               </Box>
-                              <Grid item xs={6} sm={4} md={3} >
-                                <Paper elevation={1} sx={{ p: 2, mx: 6, border: '1px solid #ddd', textAlign: "center" }}>
+                              <Paper elevation={1} sx={{ p: 2, minWidth: 140, border: '1px solid #ddd', textAlign: 'center' }}>
                                   <Stack direction="row" alignItems="center" justifyContent="center" spacing={1}>
                                     <WorkDaysIcon color="action" />
                                     <Typography variant="h6">
@@ -917,15 +916,12 @@ const Report = () => {
                                   </Stack>
                                   <Typography variant="body2">Scheduled Work Days</Typography>
                                 </Paper>
-                              </Grid>
-                                <Grid item xs={6} sm={4} md={3}>
-                                <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
+                              <Paper elevation={1} sx={{ p: 2, minWidth: 120, border: '1px solid #ddd', textAlign: 'center' }}>
                                   <Typography variant="h6" color="error">
                                     {absentCount}
                                   </Typography>
                                   <Typography variant="body2">Absent Days</Typography>
                                 </Paper>
-                              </Grid>
                             </Stack>
 
                             {/* {weeklySchedule && (
@@ -948,10 +944,10 @@ const Report = () => {
                       )} */}
                           </Grid>
 
-                          <Grid item xs={12} md={8}>
+                          <Grid size={{ xs: 12, md: 8 }}>
                             <Grid container spacing={2}>
 
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, textAlign: "center", border: '1px solid #ddd' }}>
                                   <Typography variant="h6" color="primary">
                                     {presentCount}
@@ -960,7 +956,7 @@ const Report = () => {
                                 </Paper>
                               </Grid>
                             
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" sx={{ color: '#7c3aed' }}>
                                     {holidayCount}
@@ -968,7 +964,7 @@ const Report = () => {
                                   <Typography variant="body2">Holidays</Typography>
                                 </Paper>
                               </Grid>
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color="info.main">
                                     {leaveCount}
@@ -976,7 +972,7 @@ const Report = () => {
                                   <Typography variant="body2">Leaves</Typography>
                                 </Paper>
                               </Grid>
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color="success.main">
                                     {wfhCount}
@@ -985,7 +981,7 @@ const Report = () => {
                                 </Paper>
                               </Grid>
 
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color={attendancePercentage >= 90 ? "success.main" : "warning.main"}>
                                     {attendancePercentage}%
@@ -993,7 +989,7 @@ const Report = () => {
                                   <Typography variant="body2">Attendance</Typography>
                                 </Paper>
                               </Grid>
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color="warning.main">
                                     {lateCount}
@@ -1001,7 +997,7 @@ const Report = () => {
                                   <Typography variant="body2">Late Arrivals</Typography>
                                 </Paper>
                               </Grid>
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color="warning.main">
                                     {earlyCount}
@@ -1009,7 +1005,7 @@ const Report = () => {
                                   <Typography variant="body2">Early Departures</Typography>
                                 </Paper>
                               </Grid>
-                              <Grid item xs={6} sm={4} md={3}>
+                              <Grid size={{ xs: 6, sm: 4, md: 3 }}>
                                 <Paper elevation={1} sx={{ p: 2, border: '1px solid #ddd', textAlign: "center" }}>
                                   <Typography variant="h6" color="warning.main">
                                     {incompleteDays}

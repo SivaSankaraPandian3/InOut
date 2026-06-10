@@ -1,5 +1,7 @@
 import { API_ENDPOINTS, BASE_URL } from './api';
 
+const failedImageUrls = new Set();
+
 /** Image path from attendance record (supports alternate backend field names). */
 export function getAttendanceImage(record) {
   if (!record) return '';
@@ -15,7 +17,9 @@ export function resolveAttendanceImageUrl(image) {
   const value = typeof image === 'string' ? image.trim() : '';
   if (!value) return '';
 
-  if (/^https?:\/\//i.test(value)) return value;
+  if (/^https?:\/\//i.test(value)) {
+    return failedImageUrls.has(value) ? '' : value;
+  }
 
   if (value.startsWith('//')) return `https:${value}`;
 
@@ -27,7 +31,16 @@ export function resolveAttendanceImageUrl(image) {
     return `${BASE_URL}${value}`;
   }
 
-  return `${API_ENDPOINTS.uploadPath}/${value.replace(/^\/+/, '')}`;
+  const built = `${API_ENDPOINTS.uploadPath}/${value.replace(/^\/+/, '')}`;
+  return failedImageUrls.has(built) ? '' : built;
+}
+
+export function markAttendanceImageFailed(url) {
+  if (url) failedImageUrls.add(url);
+}
+
+export function isAttendanceImageFailed(url) {
+  return Boolean(url && failedImageUrls.has(url));
 }
 
 /** Append attendance photo for multer (field name must match backend: "image"). */

@@ -334,7 +334,15 @@ const AllUsers = () => {
                 <td title={user.employeeId}>{user.employeeId || '-'}</td>
                 <td style={{ fontWeight: 500 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
-                    <img src={user.profilePic || '/default-avatar.png'} alt={user.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                    <img
+                      src={user.profilePic || '/default-avatar.png'}
+                      alt={user.name}
+                      style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/default-avatar.png';
+                      }}
+                    />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} title={user.name}>{user.name}</span>
                   </span>
                 </td>

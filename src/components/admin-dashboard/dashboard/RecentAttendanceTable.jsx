@@ -3,8 +3,10 @@ import { officePresentBadgeClass } from "../../../utils/branches";
 import { getLogOfficeName } from "../../../utils/officeLocations";
 import {
   getAttendanceImage,
+  isAttendanceImageFailed,
   resolveAttendanceImageUrl,
 } from "../../../utils/attendanceImage";
+import SafeImage from "../../common/SafeImage";
 
 const RecentAttendanceTable = ({ logs = [], selectedDate = '' }) => {
   const [modalImage, setModalImage] = useState(null);
@@ -116,32 +118,28 @@ const RecentAttendanceTable = ({ logs = [], selectedDate = '' }) => {
                 <td>
                   {(() => {
                     const src = resolveAttendanceImageUrl(getAttendanceImage(entry.checkIn));
-                    return src ? (
-                      <img
+                    if (!src || isAttendanceImageFailed(src)) return '—';
+                    return (
+                      <SafeImage
                         src={src}
                         alt="Check-In"
                         style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
                         onClick={() => setModalImage(src)}
-                        onError={(e) => { e.target.style.display = 'none'; }}
                       />
-                    ) : (
-                      "—"
                     );
                   })()}
                 </td>
                 <td>
                   {(() => {
                     const src = resolveAttendanceImageUrl(getAttendanceImage(entry.checkOut));
-                    return src ? (
-                      <img
+                    if (!src || isAttendanceImageFailed(src)) return '—';
+                    return (
+                      <SafeImage
                         src={src}
                         alt="Check-Out"
                         style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
                         onClick={() => setModalImage(src)}
-                        onError={(e) => { e.target.style.display = 'none'; }}
                       />
-                    ) : (
-                      "—"
                     );
                   })()}
                 </td>

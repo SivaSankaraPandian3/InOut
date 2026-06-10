@@ -74,6 +74,10 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
                 src={user.profilePic}
                 alt={`${user.name}'s avatar`}
                 className={`w-16 h-16 rounded-full object-cover ring-2 ring-gray-200 p-1 `}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : (
               <div className={`w-16 h-16 text-3xl font-semibold rounded-full flex justify-center items-center ring-2 ring-gray-200 p-1 `}>{(user.name || 'U').charAt(0)}</div>
@@ -133,6 +137,11 @@ const UserCard = ({ user, className = '', onEdit, forceExpanded = false, onClose
               }
               alt={`${user.name}'s avatar`}
               className="uc-profile-avatar"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src =
+                  'https://www.pikpng.com/pngl/m/154-1540525_male-user-filled-icon-my-profile-icon-png.png';
+              }}
             />
             <img
               src={getCompanyLogo(works[0]?.company || user.company)}
