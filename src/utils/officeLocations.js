@@ -19,7 +19,7 @@ export const OFFICE_LOCATIONS = [
     branchName: 'Tirunelveli',
     latitude: 8.7237565,
     longitude: 77.722212,
-    radiusMeters: 1500,
+    radiusMeters: 2000,
     address:
       '3rd Floor, Fab Sapphire Towers, 29/5, S Bypass Rd, Vasanth Nagar, Tirunelveli, Tamil Nadu 627005',
     plusCode: 'MPXG+GQ Tirunelveli',
@@ -38,16 +38,30 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
   return 2 * R * Math.asin(Math.sqrt(a));
 };
 
+export const parseLocationCoords = (locationString) => {
+  if (!locationString || !String(locationString).includes(',')) return null;
+  let [lat, lon] = String(locationString).split(',').map((v) => Number(v.trim()));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat > 20 && lon < 20) {
+    [lat, lon] = [lon, lat];
+  }
+  return { lat, lon };
+};
+
 /** GPS within office radius → branch name; otherwise Outside Office. */
 export const resolveOfficeFromLocation = (locationString) => {
-  if (!locationString || !String(locationString).includes(',')) return null;
-  const [lat, lon] = String(locationString).split(',').map(Number);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const coords = parseLocationCoords(locationString);
+  if (!coords) return null;
 
   let best = null;
 
   for (const office of OFFICE_LOCATIONS) {
-    const distance = haversineMeters(lat, lon, office.latitude, office.longitude);
+    const distance = haversineMeters(
+      coords.lat,
+      coords.lon,
+      office.latitude,
+      office.longitude
+    );
     if (distance <= office.radiusMeters) {
       if (!best || distance < best.distanceMeters) {
         best = {
@@ -72,7 +86,7 @@ export const formatOfficeDisplayName = (name) => {
   return n;
 };
 
-/** Dashboard / reports: office radius only — no branch override. */
+/** Check-in and check-out each use their own GPS — radius only, no pairing. */
 export const getLogOfficeName = (log) => {
   if (!log) return '—';
   if (log.location) {
