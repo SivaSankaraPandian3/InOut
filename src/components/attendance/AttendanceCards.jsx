@@ -1,39 +1,35 @@
 import React from 'react';
-import {
-  getLocalDateKey,
-  isSameCalendarDay,
-  normalizeAttendanceType,
-} from '../../utils/attendanceDate';
 
 function formatTime(timestamp) {
   if (!timestamp) return '--:--';
   const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return '--:--';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function AttendanceCards({ attendanceData = [], selectedDate = new Date() }) {
-  const dayEntries = attendanceData.filter((entry) =>
-    isSameCalendarDay(entry.timestamp, selectedDate)
-  );
+function AttendanceCards({ attendanceData = [] }) {
+  if (!attendanceData.length) return null;
 
-  const checkIn = dayEntries.find(
-    (entry) => normalizeAttendanceType(entry.type) === 'check-in'
-  );
-  const checkOut = dayEntries.find(
-    (entry) => normalizeAttendanceType(entry.type) === 'check-out'
-  );
+  // Group attendance by date
+  const grouped = attendanceData.reduce((acc, entry) => {
+    const date = new Date(entry.timestamp).toDateString();
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(entry);
+    return acc;
+  }, {});
 
-  const totalWorkingDays = new Set(
-    attendanceData.map((entry) => getLocalDateKey(entry.timestamp)).filter(Boolean)
-  ).size;
+  // Get latest date
+  const latestDate = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a))[0];
+  const latestEntries = grouped[latestDate] || [];
+
+  const checkIn = latestEntries.find(entry => entry.type === 'check-in');
+  const checkOut = latestEntries.find(entry => entry.type === 'check-out');
 
   const cards = [
     {
       title: 'Check In',
       time: formatTime(checkIn?.timestamp),
       note: checkIn ? 'On Time' : 'Not Yet',
-      bgColor: 'bg-green-100',
+      bgColor: 'bg-green-100', 
       textColor: 'text-green-800',
     },
     {
@@ -52,7 +48,7 @@ function AttendanceCards({ attendanceData = [], selectedDate = new Date() }) {
     },
     {
       title: 'Total Days',
-      time: String(totalWorkingDays),
+      time: Object.keys(grouped).length.toString(),
       note: 'Working Days',
       bgColor: 'bg-purple-100',
       textColor: 'text-purple-800',

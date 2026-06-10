@@ -95,10 +95,7 @@ const RecentAttendanceTable = ({ logs = [] }) => {
                   {(() => {
                     const name = getLogOfficeName(entry.checkIn);
                     return (
-                      <span
-                        className={officePresentBadgeClass(name)}
-                        title={entry.checkIn?.location ? `GPS: ${entry.checkIn.location}` : 'No GPS saved'}
-                      >
+                      <span className={officePresentBadgeClass(name)}>
                         {name}
                       </span>
                     );
@@ -108,10 +105,7 @@ const RecentAttendanceTable = ({ logs = [] }) => {
                   {(() => {
                     const name = getLogOfficeName(entry.checkOut);
                     return (
-                      <span
-                        className={officePresentBadgeClass(name)}
-                        title={entry.checkOut?.location ? `GPS: ${entry.checkOut.location}` : 'No GPS saved'}
-                      >
+                      <span className={officePresentBadgeClass(name)}>
                         {name}
                       </span>
                     );

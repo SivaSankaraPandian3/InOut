@@ -2,14 +2,14 @@
 export const OFFICE_LOCATIONS = [
   {
     name: 'Pallikaranai',
-    branchName: 'Pallikaranai',
+    branchName: 'Chennai Pallikarani',
     latitude: 12.94198577,
     longitude: 80.21012198,
     radiusMeters: 200,
   },
   {
     name: 'Velechery',
-    branchName: 'Velachery',
+    branchName: 'Chennai Velachery',
     latitude: 12.9912597,
     longitude: 80.2201616,
     radiusMeters: 400,
@@ -17,9 +17,9 @@ export const OFFICE_LOCATIONS = [
   {
     name: 'Tirunelveli',
     branchName: 'Tirunelveli',
-    latitude: 8.7237565,
-    longitude: 77.722212,
-    radiusMeters: 2000,
+    latitude: 8.6988125,
+    longitude: 77.7269375,
+    radiusMeters: 750,
     address:
       '3rd Floor, Fab Sapphire Towers, 29/5, S Bypass Rd, Vasanth Nagar, Tirunelveli, Tamil Nadu 627005',
     plusCode: 'MPXG+GQ Tirunelveli',
@@ -38,30 +38,16 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
   return 2 * R * Math.asin(Math.sqrt(a));
 };
 
-export const parseLocationCoords = (locationString) => {
-  if (!locationString || !String(locationString).includes(',')) return null;
-  let [lat, lon] = String(locationString).split(',').map((v) => Number(v.trim()));
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  if (lat > 20 && lon < 20) {
-    [lat, lon] = [lon, lat];
-  }
-  return { lat, lon };
-};
-
-/** GPS only — profile branch is NOT used. Nearest office within radius, else Outside Office. */
+/** Within branch radius → branch name; otherwise Outside Office. */
 export const resolveOfficeFromLocation = (locationString) => {
-  const coords = parseLocationCoords(locationString);
-  if (!coords) return null;
+  if (!locationString || !String(locationString).includes(',')) return null;
+  const [lat, lon] = String(locationString).split(',').map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
   let best = null;
 
   for (const office of OFFICE_LOCATIONS) {
-    const distance = haversineMeters(
-      coords.lat,
-      coords.lon,
-      office.latitude,
-      office.longitude
-    );
+    const distance = haversineMeters(lat, lon, office.latitude, office.longitude);
     if (distance <= office.radiusMeters) {
       if (!best || distance < best.distanceMeters) {
         best = {
@@ -77,22 +63,12 @@ export const resolveOfficeFromLocation = (locationString) => {
   return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
 };
 
-/** Show short office label (e.g. Pallikaranai, not Chennai Pallikarani). */
-export const formatOfficeDisplayName = (name) => {
-  if (!name || name === '—') return name;
-  const n = String(name).trim();
-  if (/chennai\s+pallikar/i.test(n)) return 'Pallikaranai';
-  if (/chennai\s+velach/i.test(n) || /^velechery$/i.test(n)) return 'Velachery';
-  return n;
-};
-
-/** Check-in and check-out each use their own GPS — radius only, no pairing. */
+/** Dashboard / reports: prefer GPS-based branch when coordinates exist. */
 export const getLogOfficeName = (log) => {
   if (!log) return '—';
   if (log.location) {
     const resolved = resolveOfficeFromLocation(log.location);
-    if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
-    return 'Outside Office';
+    if (resolved?.isInOffice) return resolved.officeName;
   }
-  return formatOfficeDisplayName(log.officeName) || '—';
+  return log.officeName || '—';
 };

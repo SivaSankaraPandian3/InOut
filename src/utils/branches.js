@@ -1,6 +1,6 @@
 import { getPrimaryWork, getUserWorks, withSyncedWorks } from './userWorks';
 
-export const BRANCH_OPTIONS = ['Pallikaranai', 'Velachery', 'Tirunelveli'];
+export const BRANCH_OPTIONS = ['Chennai Pallikarani', 'Chennai Velachery', 'Tirunelveli'];
 
 /** Read branch from API user (top-level, works, or bankDetails.officeBranch). */
 export const extractBranchFromUser = (user) => {
@@ -89,9 +89,9 @@ export const normalizeBranchValue = (value) => {
   const branchPrefix = raw.split('|')[0].trim();
   const lower = branchPrefix.toLowerCase();
   if (lower.includes('tirunel') || lower === 'tvl') return 'Tirunelveli';
-  if (lower.includes('pallikar')) return 'Pallikaranai';
-  if (lower.includes('velach') || lower.includes('velech') || lower === 'velachery') return 'Velachery';
-  if (lower === 'chennai') return 'Pallikaranai';
+  if (lower.includes('pallikar')) return 'Chennai Pallikarani';
+  if (lower.includes('velach') || lower.includes('velech') || lower === 'velachery') return 'Chennai Velachery';
+  if (lower === 'chennai') return 'Chennai Pallikarani';
   if (BRANCH_OPTIONS.some((b) => b.toLowerCase() === lower)) {
     return BRANCH_OPTIONS.find((b) => b.toLowerCase() === lower);
   }
@@ -114,9 +114,9 @@ export const getUserBranch = (user) => {
     ''
   ).toLowerCase();
   if (dept.includes('tirunel')) return 'Tirunelveli';
-  if (dept.includes('pallikar')) return 'Pallikaranai';
-  if (dept.includes('velach') || dept.includes('velech')) return 'Velachery';
-  if (dept.includes('chennai')) return 'Pallikaranai';
+  if (dept.includes('pallikar')) return 'Chennai Pallikarani';
+  if (dept.includes('velach') || dept.includes('velech')) return 'Chennai Velachery';
+  if (dept.includes('chennai')) return 'Chennai Pallikarani';
   return '';
 };
 
@@ -127,15 +127,15 @@ export const matchesBranchFilter = (user, filterBranch) => {
 
 /** Compact label for table cells; full name available via title/tooltip. */
 export const getBranchShortLabel = (branch) => {
-  if (branch === 'Pallikaranai' || branch === 'Chennai Pallikarani') return 'Pallikaranai';
-  if (branch === 'Velachery' || branch === 'Chennai Velachery') return 'Velachery';
+  if (branch === 'Chennai Pallikarani') return 'Pallikarani';
+  if (branch === 'Chennai Velachery') return 'Velachery';
   if (branch === 'Tirunelveli') return 'Tirunelveli';
   return branch || '';
 };
 
 export const branchBadgeClass = (branch) => {
-  if (branch === 'Pallikaranai' || branch === 'Chennai Pallikarani') return 'uc-branch-badge uc-branch-pallikarani';
-  if (branch === 'Velachery' || branch === 'Chennai Velachery') return 'uc-branch-badge uc-branch-velachery';
+  if (branch === 'Chennai Pallikarani') return 'uc-branch-badge uc-branch-pallikarani';
+  if (branch === 'Chennai Velachery') return 'uc-branch-badge uc-branch-velachery';
   if (branch === 'Tirunelveli') return 'uc-branch-badge uc-branch-tirunelveli';
   return 'uc-branch-badge uc-branch-default';
 };
@@ -162,9 +162,7 @@ export const officePresentBadgeClass = (officeName) => {
   if (!officeName) return 'text-red-600';
   const o = String(officeName).toLowerCase();
   if (o.includes('pallikaranai')) return 'px-2 py-1 rounded-full text-white bg-green-500 text-xs';
-  if (o.includes('velachery') || o.includes('velechery')) {
-    return 'px-2 py-1 rounded-full text-white bg-blue-500 text-xs';
-  }
+  if (o.includes('velechery')) return 'px-2 py-1 rounded-full text-white bg-blue-500 text-xs';
   if (o.includes('tirunelveli') || o.includes('tvl')) {
     return 'px-2 py-1 rounded-full text-white bg-amber-600 text-xs';
   }

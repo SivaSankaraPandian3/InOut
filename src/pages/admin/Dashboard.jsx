@@ -28,69 +28,44 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem('token');
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
-  // Fetch summary and logs on load
- useEffect(() => {
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    localStorage.removeItem('dashboard_cache');
+    localStorage.removeItem('dashboard_cache_time');
+  }, []);
 
-    const headers = { Authorization: `Bearer ${token}` };
+  useEffect(() => {
+    if (!token) return undefined;
 
-    // Cache keys
-    const CACHE_KEY = "dashboard_cache";
-    const CACHE_TIME_KEY = "dashboard_cache_time";
-    const CACHE_TTL = 10 * 60 * 1000; // 5 minutes
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      };
 
-    // 1️⃣ Check cache
-    const cached = localStorage.getItem(CACHE_KEY);
-    const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+      try {
+        const [summaryRes, logsRes, usersRes] = await Promise.all([
+          axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
+          axios.get(`${API_ENDPOINTS.getRecentDashboardLogs}?_=${Date.now()}`, { headers }),
+          axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers }),
+        ]);
 
-    if (cached && cachedTime && (Date.now() - cachedTime < CACHE_TTL)) {
-      const data = JSON.parse(cached);
+        setSummary(summaryRes.data || {});
+        setLogs(logsRes.data || []);
+        setFilteredLogs(logsRes.data || []);
+        setAllUsers(usersRes.data || []);
+      } catch (err) {
+        console.error('Dashboard loading error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setSummary(data.summary);
-      setLogs(data.logs);
-      setFilteredLogs(data.logs);
-      setAllUsers(data.users);
-
-      setLoading(false);
-      return;
-    }
-
-    // 2️⃣ No cache → Fetch fresh
-    try {
-      const [summaryRes, logsRes, usersRes] = await Promise.all([
-        axios.get(API_ENDPOINTS.getAdminSummary, { headers }),
-        axios.get(API_ENDPOINTS.getRecentDashboardLogs, { headers }),
-        axios.get(API_ENDPOINTS.getUsers, { headers })
-      ]);
-
-      const summary = summaryRes.data || {};
-      const logs = logsRes.data || [];
-      const users = usersRes.data || [];
-
-      // Set state
-      setSummary(summary);
-      setLogs(logs);
-      setFilteredLogs(logs);
-      setAllUsers(users);
-
-      // 3️⃣ Save to cache
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ summary, logs, users })
-      );
-      localStorage.setItem(CACHE_TIME_KEY, Date.now());
-
-    } catch (err) {
-      console.error("Dashboard loading error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchDashboardData();
-}, [token]);
+    fetchDashboardData();
+  }, [token, refreshNonce]);
 
   
   // Apply filters
@@ -191,11 +166,7 @@ const Dashboard = () => {
         <button
           type="button"
           className="uc-btn uc-btn-primary"
-          onClick={() => {
-            localStorage.removeItem('dashboard_cache');
-            localStorage.removeItem('dashboard_cache_time');
-            window.location.reload();
-          }}
+          onClick={() => setRefreshNonce((n) => n + 1)}
         >
           <Sync fontSize="small" />
           Refresh Data

@@ -21,8 +21,13 @@ root.render(
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 
 
+// Drop legacy dashboard cache so stale attendance/users are not shown.
+if (typeof window !== 'undefined') {
+  localStorage.removeItem('dashboard_cache');
+  localStorage.removeItem('dashboard_cache_time');
+}
+
 // Ensure any old service worker or caches from previous deployments are removed.
-// This helps users get the new index.html without needing a manual hard refresh.
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   // Unregister all service workers
   navigator.serviceWorker.getRegistrations()

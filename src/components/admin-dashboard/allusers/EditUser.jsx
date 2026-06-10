@@ -213,7 +213,7 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
                     <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
-                <p className="uc-form-hint">Pallikaranai, Velachery, or Tirunelveli office.</p>
+                <p className="uc-form-hint">Chennai Pallikarani, Chennai Velachery, or Tirunelveli office.</p>
               </div>
               <div className="uc-form-field">
                 <label htmlFor="edit-join">Date of Joining</label>
