@@ -33,7 +33,9 @@ function EditUser() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get(API_ENDPOINTS.getUsers);
+        const token = localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await axios.get(API_ENDPOINTS.getUsers, { headers });
         setUsers(response.data);
 
         console.log('response.data:', response.data);
@@ -56,12 +58,17 @@ function EditUser() {
         try {
           setIsLoading(true);
           // Fetch user details
-          const userResponse = await axios.get(`http://localhost:5000/users/${selectedUserId}`);
+          const token = localStorage.getItem('token');
+          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+          const userResponse = await axios.get(API_ENDPOINTS.getUserById(selectedUserId), { headers });
           const userData = userResponse.data;
           
           // Fetch user schedule
-          const scheduleResponse = await axios.get(`http://localhost:5000/schedules/user/${selectedUserId}`);
-          const scheduleData = scheduleResponse.data;
+          const scheduleResponse = await axios.get(API_ENDPOINTS.getSchedules, { headers });
+          const scheduleList = Array.isArray(scheduleResponse.data) ? scheduleResponse.data : [];
+          const scheduleData = scheduleList.find(
+            (s) => String(s.user?._id || s.user) === String(selectedUserId)
+          );
           
           // Update state
           setFormData({
@@ -130,11 +137,12 @@ function EditUser() {
         dateOfBirth: formData.dateOfBirth || undefined
       };
 
-      await axios.put(`http://localhost:5000/users/${selectedUserId}`, updateData);
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      await axios.put(API_ENDPOINTS.updateUser(selectedUserId), updateData, { headers });
       setSuccess('User updated successfully!');
       
-      // Refresh users list
-      const response = await axios.get('http://localhost:5000/users');
+      const response = await axios.get(API_ENDPOINTS.getUsers, { headers });
       setUsers(response.data);
     } catch (error) {
       console.error('Error updating user:', error);
