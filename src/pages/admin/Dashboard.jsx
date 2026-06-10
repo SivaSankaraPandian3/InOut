@@ -11,6 +11,7 @@ import { Sync } from '@mui/icons-material';
 import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
 import { isSameLocalDay, localDateYMD } from '../../utils/localDate';
 import {
+  buildSummaryFromLogs,
   enrichLogNames,
   filterLogsByDate,
   mapRawAttendanceRecords,
@@ -90,41 +91,66 @@ const Dashboard = () => {
         Pragma: 'no-cache',
       };
 
-      let users = [];
       try {
-        const usersRes = await axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers });
-        users = Array.isArray(usersRes.data) ? usersRes.data : [];
-        setAllUsers(users);
-      } catch (userErr) {
-        console.error('Dashboard users error:', userErr);
-        setFetchError('Could not load employee list. Try Refresh Data.');
-      }
+        let users = [];
+        let logsData = [];
 
-      try {
-        const summaryRes = await axios.get(API_ENDPOINTS.getAdminSummary, { headers });
-        setSummary(summaryRes.data || {});
-      } catch (summaryErr) {
-        console.error('Dashboard summary error:', summaryErr);
-        setSummary(null);
-        setFetchError((prev) => prev || 'Summary cards unavailable. Attendance table may still load below.');
-      }
+        try {
+          const usersRes = await axios.get(`${API_ENDPOINTS.getUsers}?_=${Date.now()}`, { headers });
+          users = Array.isArray(usersRes.data) ? usersRes.data : [];
+          setAllUsers(users);
+        } catch (userErr) {
+          console.error('Dashboard users error:', userErr);
+          setFetchError('Could not load employee list. Try Refresh Data.');
+        }
 
-      try {
-        const logsRaw = await fetchDashboardLogs(dateFilter, headers, users);
-        const logsData = enrichLogNames(logsRaw, users);
-        setLogs(logsData);
-        setFilteredLogs(logsData);
-      } catch (logErr) {
-        console.error('Dashboard logs error:', logErr);
-        setLogs([]);
-        setFilteredLogs([]);
-        const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
-        if (logErr.response?.status === 403) {
-          setFetchError('Admin access only. Log out and sign in with an admin account.');
-        } else if (logErr.response?.status === 401) {
-          setFetchError('Session expired. Please log in again.');
-        } else {
-          setFetchError((prev) => prev || msg || 'Could not load attendance for this date. Try Refresh Data.');
+        try {
+          const logsRaw = await fetchDashboardLogs(dateFilter, headers, users);
+          logsData = enrichLogNames(logsRaw, users);
+          setLogs(logsData);
+          setFilteredLogs(logsData);
+        } catch (logErr) {
+          console.error('Dashboard logs error:', logErr);
+          setLogs([]);
+          setFilteredLogs([]);
+          const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
+          if (logErr.response?.status === 403) {
+            setFetchError('Admin access only. Log out and sign in with an admin account.');
+          } else if (logErr.response?.status === 401) {
+            setFetchError('Session expired. Please log in again.');
+          } else {
+            setFetchError((prev) => prev || msg || 'Could not load attendance for this date. Try Refresh Data.');
+          }
+        }
+
+        const todayStr = localDateYMD();
+        let summaryData = null;
+
+        try {
+          const summaryRes = await axios.get(API_ENDPOINTS.getAdminSummary, { headers });
+          summaryData = summaryRes.data || null;
+        } catch (summaryErr) {
+          console.warn('Dashboard summary API failed, using client-side counts:', summaryErr.message);
+        }
+
+        if (!summaryData || summaryData.totalEmployees == null) {
+          let todayLogs = logsData;
+          if (!isSameLocalDay(dateFilter, todayStr)) {
+            try {
+              todayLogs = enrichLogNames(
+                await fetchDashboardLogs(todayStr, headers, users),
+                users
+              );
+            } catch {
+              todayLogs = [];
+            }
+          }
+          summaryData = buildSummaryFromLogs(todayLogs, users, todayStr);
+        }
+
+        setSummary(summaryData);
+        if (summaryData?.totalEmployees != null) {
+          setFetchError((prev) => (prev && !logsData.length ? prev : ''));
         }
       } finally {
         setLoading(false);

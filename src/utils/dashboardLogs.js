@@ -1,4 +1,4 @@
-import { isSameLocalDay, localDateYMD } from './localDate';
+import { localDateYMD } from './localDate';
 
 export const normalizeLogs = (data) => (Array.isArray(data) ? data : []);
 
@@ -57,6 +57,20 @@ export const mapRawAttendanceRecords = (records = [], users = []) => {
 
 export const activeEmployees = (users = []) =>
   users.filter((u) => u.role === 'employee' && u.isActive !== false);
+
+/** Build present/absent counts from loaded logs + user list (summary API fallback). */
+export const buildSummaryFromLogs = (logs = [], users = [], dateFilter) => {
+  const employees = activeEmployees(users);
+  const dayLogs = dateFilter ? filterLogsByDate(logs, dateFilter) : logs;
+  const presentIds = presentEmployeeIds(dayLogs);
+  const presentToday = presentIds.size;
+  const totalEmployees = employees.length;
+  return {
+    totalEmployees,
+    presentToday,
+    absentToday: Math.max(0, totalEmployees - presentToday),
+  };
+};
 
 /** Fill missing employee names from the users list. */
 export const enrichLogNames = (logs = [], users = []) => {
