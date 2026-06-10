@@ -21,7 +21,7 @@ export const OFFICE_LOCATIONS = [
     branchName: 'Tirunelveli',
     latitude: 8.7237565,
     longitude: 77.722212,
-    radiusMeters: 1200,
+    radiusMeters: 1500,
     address:
       '3rd Floor, Fab Sapphire Towers, 29/5, S Bypass Rd, Vasanth Nagar, Tirunelveli, Tamil Nadu 627005',
     plusCode: 'MPXG+GQ Tirunelveli',
@@ -42,9 +42,18 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
 
 const effectiveRadius = (office, preferredOfficeName) => {
   if (!preferredOfficeName || office.name !== preferredOfficeName) return office.radiusMeters;
-  if (office.name === 'Tirunelveli') return 2500;
+  if (office.name === 'Tirunelveli') return 3000;
   return Math.round(office.radiusMeters * 1.5);
 };
+
+/** Rough Tirunelveli city bounds — indoor GPS often drifts far from office pin. */
+const isInTirunelveliRegion = (lat, lon) =>
+  Number.isFinite(lat) &&
+  Number.isFinite(lon) &&
+  lat >= 8.65 &&
+  lat <= 8.85 &&
+  lon >= 77.65 &&
+  lon <= 77.78;
 
 /** Within branch radius → branch name; otherwise Outside Office. */
 export const resolveOfficeFromLocation = (locationString, preferredOfficeName = null) => {
@@ -69,6 +78,17 @@ export const resolveOfficeFromLocation = (locationString, preferredOfficeName = 
   }
 
   if (best) return best;
+
+  if (preferredOfficeName === 'Tirunelveli' && isInTirunelveliRegion(lat, lon)) {
+    const tvl = OFFICE_LOCATIONS.find((o) => o.name === 'Tirunelveli');
+    const distance = haversineMeters(lat, lon, tvl.latitude, tvl.longitude);
+    return {
+      officeName: tvl.branchName,
+      isInOffice: true,
+      distanceMeters: Math.round(distance),
+    };
+  }
+
   return { officeName: 'Outside Office', isInOffice: false, distanceMeters: null };
 };
 
@@ -85,9 +105,16 @@ export const formatOfficeDisplayName = (name) => {
 export const getLogOfficeName = (log, preferredOfficeName = null) => {
   if (!log) return '—';
   const preferred = preferredOfficeName || branchToOfficeName(log.userBranch);
+
   if (log.location) {
     const resolved = resolveOfficeFromLocation(log.location, preferred);
     if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
   }
+
+  // Legacy live API may omit location / save Outside Office for Tirunelveli staff.
+  if (preferred === 'Tirunelveli' && log.officeName === 'Outside Office') {
+    return 'Tirunelveli';
+  }
+
   return formatOfficeDisplayName(log.officeName) || '—';
 };
