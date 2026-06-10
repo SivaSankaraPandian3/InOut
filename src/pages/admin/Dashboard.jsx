@@ -11,11 +11,25 @@ import { Sync } from '@mui/icons-material';
 import { BRANCH_OPTIONS, logMatchesBranchFilter, matchesBranchFilter } from '../../utils/branches';
 import { isSameLocalDay, localDateYMD } from '../../utils/localDate';
 import {
+  activeEmployees,
   enrichLogNames,
   filterLogsByDate,
   mapRawAttendanceRecords,
   normalizeLogs,
+  presentEmployeeIds,
 } from '../../utils/dashboardLogs';
+
+const buildSummaryFromLogs = (users, logs, dateFilter) => {
+  const employees = activeEmployees(users);
+  const todayLogs = filterLogsByDate(logs, dateFilter);
+  const present = presentEmployeeIds(todayLogs).size;
+  const total = employees.length;
+  return {
+    totalEmployees: total,
+    presentToday: present,
+    absentToday: Math.max(0, total - present),
+  };
+};
 
 const fetchDashboardLogs = async (dateFilter, headers, users = []) => {
   const datedUrl = `${API_ENDPOINTS.getRecentDashboardLogs}?date=${encodeURIComponent(dateFilter)}&_=${Date.now()}`;
@@ -99,9 +113,11 @@ const Dashboard = () => {
         console.error('Dashboard users error:', err);
       }
 
+      let summaryLoaded = false;
       try {
         const summaryRes = await axios.get(API_ENDPOINTS.getAdminSummary, { headers });
         setSummary(summaryRes.data || {});
+        summaryLoaded = true;
       } catch (err) {
         console.error('Dashboard summary error:', err);
         const msg = err.response?.data?.msg || err.response?.data?.error;
@@ -121,7 +137,12 @@ const Dashboard = () => {
         );
         setLogs(logsData);
         setFilteredLogs(logsData);
-        if (logsData.length > 0) setFetchError('');
+        if (!summaryLoaded && logsData.length > 0 && users.length > 0) {
+          setSummary(buildSummaryFromLogs(users, logsData, dateFilter));
+          setFetchError('');
+        } else if (logsData.length > 0) {
+          setFetchError('');
+        }
       } catch (logErr) {
         console.error('Dashboard logs error:', logErr);
         const msg = logErr.response?.data?.msg || logErr.response?.data?.error;
