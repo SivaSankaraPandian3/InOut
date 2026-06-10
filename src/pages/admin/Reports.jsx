@@ -66,7 +66,6 @@ import {
 import {
   enrichLogNames,
   getLogTimestamp,
-  mapRawAttendanceRecords,
   normalizeLogs,
 } from "../../utils/dashboardLogs";
 
@@ -74,17 +73,10 @@ const REPORTS_MIN_DATE = new Date(2024, 0, 1);
 const REPORTS_MAX_DATE = new Date(new Date().getFullYear() + 1, 11, 31);
 
 const fetchAllReportLogs = async (headers, users) => {
-  try {
-    const res = await axios.get(`${API_ENDPOINTS.getAttendanceAll}?_=${Date.now()}`, { headers });
-    const rows = enrichLogNames(normalizeLogs(res.data), users);
-    if (rows.length > 0) return rows;
-  } catch {
-    /* fall through */
-  }
-
+  // Use recent-dashboard (stable on Render). Avoid /attendance/all — it 500s on large DB.
   try {
     const res = await axios.get(
-      `${API_ENDPOINTS.getRecentDashboardLogs}?days=730&_=${Date.now()}`,
+      `${API_ENDPOINTS.getRecentDashboardLogs}?days=1095&_=${Date.now()}`,
       { headers }
     );
     const rows = enrichLogNames(normalizeLogs(res.data), users);
@@ -94,8 +86,11 @@ const fetchAllReportLogs = async (headers, users) => {
   }
 
   try {
-    const res = await axios.get(`${API_ENDPOINTS.getAttendanceAll}?_=${Date.now()}`, { headers });
-    return mapRawAttendanceRecords(normalizeLogs(res.data), users);
+    const res = await axios.get(
+      `${API_ENDPOINTS.getRecentDashboardLogs}?days=365&_=${Date.now()}`,
+      { headers }
+    );
+    return enrichLogNames(normalizeLogs(res.data), users);
   } catch {
     return [];
   }

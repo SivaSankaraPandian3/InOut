@@ -48,12 +48,7 @@ const fetchDashboardLogs = async (dateFilter, headers, users = []) => {
     /* try full history */
   }
 
-  try {
-    const allRes = await axios.get(`${API_ENDPOINTS.getAttendanceAll}?_=${Date.now()}`, { headers });
-    return filterLogsByDate(mapRawAttendanceRecords(normalizeLogs(allRes.data), users), dateFilter);
-  } catch {
-    return [];
-  }
+  return [];
 };
 
 const Dashboard = () => {
