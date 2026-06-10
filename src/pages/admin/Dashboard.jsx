@@ -14,7 +14,6 @@ import {
   buildSummaryFromLogs,
   enrichLogNames,
   filterLogsByDate,
-  mapRawAttendanceRecords,
   normalizeLogs,
 } from '../../utils/dashboardLogs';
 
