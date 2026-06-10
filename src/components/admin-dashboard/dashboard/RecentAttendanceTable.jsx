@@ -115,7 +115,11 @@ const RecentAttendanceTable = ({ logs = [], allUsers = [] }) => {
                 </td>
                 <td>
                   {(() => {
-                    const name = getLogOfficeName(entry.checkOut, preferredOfficeForLog(entry.checkOut));
+                    const name = getLogOfficeName(
+                      entry.checkOut,
+                      preferredOfficeForLog(entry.checkOut),
+                      { pairedLog: entry.checkIn }
+                    );
                     return (
                       <span className={officePresentBadgeClass(name)}>
                         {name}

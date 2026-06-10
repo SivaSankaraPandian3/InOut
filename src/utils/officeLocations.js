@@ -42,7 +42,7 @@ const haversineMeters = (lat1, lon1, lat2, lon2) => {
 
 const effectiveRadius = (office, preferredOfficeName) => {
   if (!preferredOfficeName || office.name !== preferredOfficeName) return office.radiusMeters;
-  if (office.name === 'Tirunelveli') return 2000;
+  if (office.name === 'Tirunelveli') return 2500;
   return Math.round(office.radiusMeters * 1.5);
 };
 
@@ -81,15 +81,41 @@ export const formatOfficeDisplayName = (name) => {
   return n;
 };
 
-/** Dashboard / reports: prefer GPS-based branch when coordinates exist. */
-export const getLogOfficeName = (log, preferredOfficeName = null) => {
+const distanceBetweenCoords = (a, b) => {
+  const [lat1, lon1] = String(a).split(',').map(Number);
+  const [lat2, lon2] = String(b).split(',').map(Number);
+  if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return Infinity;
+  return haversineMeters(lat1, lon1, lat2, lon2);
+};
+
+/** Dashboard / reports: GPS geofence; check-out can pair with same-day in-office check-in. */
+export const getLogOfficeName = (log, preferredOfficeName = null, options = {}) => {
   if (!log) return '—';
+  const { pairedLog } = options;
   const preferred = preferredOfficeName || branchToOfficeName(log.userBranch);
 
   if (log.location) {
     const resolved = resolveOfficeFromLocation(log.location, preferred);
     if (resolved?.isInOffice) return formatOfficeDisplayName(resolved.officeName);
+
+    if (pairedLog?.location) {
+      const pairedResolved = resolveOfficeFromLocation(pairedLog.location, preferred);
+      if (
+        pairedResolved?.isInOffice &&
+        distanceBetweenCoords(log.location, pairedLog.location) <= 600
+      ) {
+        return formatOfficeDisplayName(pairedResolved.officeName);
+      }
+    }
+
     return 'Outside Office';
+  }
+
+  if (pairedLog?.location) {
+    const pairedResolved = resolveOfficeFromLocation(pairedLog.location, preferred);
+    if (pairedResolved?.isInOffice) {
+      return formatOfficeDisplayName(pairedResolved.officeName);
+    }
   }
 
   return formatOfficeDisplayName(log.officeName) || '—';
