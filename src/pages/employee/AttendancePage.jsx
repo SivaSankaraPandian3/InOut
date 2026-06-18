@@ -6,6 +6,17 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "./AttendancePage.css";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  FiCheckCircle,
+  FiXCircle,
+  FiClock,
+  FiBarChart2,
+  FiFileText,
+  FiUser,
+  FiCalendar,
+  FiLogOut,
+  FiX,
+} from "react-icons/fi";
 
 import { API_ENDPOINTS } from "../../utils/api";
 import ProfileHeader from "../../components/attendance/ProfileHeader";
@@ -36,6 +47,7 @@ function AttendancePage() {
   const [calendarViewDate, setCalendarViewDate] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comment, setComment] = useState('');
+  const [holidays, setHolidays] = useState([]);
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -43,7 +55,20 @@ function AttendancePage() {
   useEffect(() => {
     fetchUser();
     fetchAttendance();
+    fetchHolidays();
   }, [userId]);
+
+  const fetchHolidays = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get(API_ENDPOINTS.getHolidays, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setHolidays(res.data || []);
+    } catch (err) {
+      setHolidays([]);
+    }
+  };
 
   const fetchUser = async () => {
     const token = localStorage.getItem("token");
@@ -305,6 +330,34 @@ const partialAttendanceDays = Object.values(currentMonthAttendance).filter(
 // Absent days calculation (only count working days if you want)
 const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
 
+// Working days in current month = days in month minus Sundays minus admin holidays
+const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+let sundaysInCurrentMonth = 0;
+for (let d = 1; d <= daysInCurrentMonth; d++) {
+  if (new Date(currentYear, currentMonth, d).getDay() === 0) sundaysInCurrentMonth++;
+}
+
+const holidayDaysInCurrentMonth = new Set();
+holidays.forEach((h) => {
+  const hDate = new Date(h.date);
+  if (
+    hDate.getFullYear() === currentYear &&
+    hDate.getMonth() === currentMonth &&
+    hDate.getDay() !== 0 // don't double count holidays that fall on Sunday
+  ) {
+    holidayDaysInCurrentMonth.add(hDate.getDate());
+  }
+});
+
+const totalWorkingDays = Math.max(
+  0,
+  daysInCurrentMonth - sundaysInCurrentMonth - holidayDaysInCurrentMonth.size
+);
+
+// A day counts towards attendance as soon as the employee checks in
+const remainingWorkingDays = Math.max(0, totalWorkingDays - presentDays);
+
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-lime-50 via-sky-50 to-pink-50 px-4 py-6 md:py-10 max-w-4xl mx-auto font-sans">
@@ -317,17 +370,17 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
         /></div>
 
       <div className="mt-4 mb-4 flex justify-around text-sm font-medium text-gray-700">
-        <div>
-          ✅ Present: <span className="text-green-600">{presentDays}</span>
+        <div className="flex items-center gap-1">
+          <FiCheckCircle className="text-green-600" /> Present: <span className="text-green-600">{presentDays}</span>
         </div>
-        <div>
-          ❌ Leaves: <span className="text-red-600">{absentDays}</span>
+        <div className="flex items-center gap-1">
+          <FiXCircle className="text-red-600" /> Leaves: <span className="text-red-600">{absentDays}</span>
         </div>
-        <div>
-          📅 Partial: <span className="text-yellow-600">{partialAttendanceDays}</span>
+        <div className="flex items-center gap-1">
+          <FiClock className="text-yellow-600" /> Partial: <span className="text-yellow-600">{partialAttendanceDays}</span>
         </div>
-        <div>
-          📅 Total: <span className="text-blue-600">{fullAttendanceDays}</span>
+        <div className="flex items-center gap-1">
+          <FiBarChart2 className="text-blue-600" /> Total: <span className="text-blue-600">{fullAttendanceDays}</span>
         </div>
       </div>
 
@@ -335,15 +388,15 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button
             onClick={() => navigate("/apply-leave")}
-            className="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 w-full sm:w-auto"
+            className="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 w-full sm:w-auto flex items-center justify-center gap-2"
           >
-            📝 Apply Leave
+            <FiFileText /> Apply Leave
           </button>
           <button
             onClick={() => navigate("/profile")}
-            className="bg-green-500 text-white px-4 py-2 rounded shadow hover:bg-green-600 w-full sm:w-auto"
+            className="bg-green-500 text-white px-4 py-2 rounded shadow hover:bg-green-600 w-full sm:w-auto flex items-center justify-center gap-2"
           >
-            📝My Profile
+            <FiUser /> My Profile
           </button>
           {/* <button
             onClick={() => navigate("/task-manager")}
@@ -353,16 +406,16 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
           </button> */}
           <button
             onClick={() => setShowCalendarModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 w-full sm:w-auto"
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 w-full sm:w-auto flex items-center justify-center gap-2"
           >
-            📅 Open Calendar View
+            <FiCalendar /> Open Calendar View
           </button>
         </div>
         <button
           onClick={onLogout}
-          className="bg-red-500 text-white px-4 py-2 rounded shadow hover:bg-red-600 w-full sm:w-auto"
+          className="bg-red-500 text-white px-4 py-2 rounded shadow hover:bg-red-600 w-full sm:w-auto flex items-center justify-center gap-2"
         >
-          🔒 Logout
+          <FiLogOut /> Logout
         </button>
       </div>
 
@@ -373,7 +426,7 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
               className="absolute top-2 right-2 text-gray-500 text-2xl hover:text-black"
               onClick={() => setShowCalendarModal(false)}
             >
-              ✕
+              <FiX />
             </button>
             <h2 className="text-lg font-bold mb-4 text-center">
               Attendance -{" "}
@@ -513,7 +566,11 @@ const absentDays = Math.max(0, totalDaysInCurrentMonth - presentDays);
         <h3 className="text-lg font-semibold text-gray-700 mb-3">
           Today Attendance
         </h3>
-        <AttendanceCards attendanceData={attendanceHistory} />
+        <AttendanceCards
+          attendanceData={attendanceHistory}
+          totalWorkingDays={totalWorkingDays}
+          remainingDays={remainingWorkingDays}
+        />
         <br></br>
         <ActivityLog activities={filteredLogs} />
       </div>

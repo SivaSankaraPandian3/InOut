@@ -52,7 +52,6 @@ const OfferLetters = () => {
     founderName: 'Sivagaminathan',
   });
   const [titleText, setTitleText] = useState('OFFER LETTER');
-  const [letterDate, setLetterDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [body, setBody] = useState(`To,
 {{name}},
 {{addressLine1}},
@@ -375,21 +374,6 @@ If you have any questions or require further clarification, please feel free to 
 
       const { visualLines, lineHeight, paragraphGap, fontSize, spaceWidth, measureWord } = layout;
 
-      let dateStr = '';
-      try {
-        dateStr = letterDate
-          ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-          : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      } catch {
-        dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      }
-
-      const fontDateSize = 9.5;
-      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
-      const dateX = margins.left + (contentWidth - dateWidth);
-      const dateY = contentTop - fontDateSize;
-      page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
-
       const title = titleText || '';
       const titleWidth = fontBold.widthOfTextAtSize(title, titleSize);
       const titleX = margins.left + (contentWidth - titleWidth) / 2;
@@ -525,16 +509,6 @@ If you have any questions or require further clarification, please feel free to 
               sx={{ mb: 2 }}
               value={titleText}
               onChange={(e) => setTitleText(e.target.value)}
-            />
-
-            <TextField
-              label="Letter Date"
-              type="date"
-              fullWidth
-              sx={{ mb: 2 }}
-              value={letterDate}
-              onChange={(e) => setLetterDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
             />
 
             <TextField

@@ -6,7 +6,7 @@ function formatTime(timestamp) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function AttendanceCards({ attendanceData = [] }) {
+function AttendanceCards({ attendanceData = [], totalWorkingDays, remainingDays }) {
   if (!attendanceData.length) return null;
 
   // Group attendance by date
@@ -40,18 +40,18 @@ function AttendanceCards({ attendanceData = [] }) {
       textColor: 'text-blue-800',
     },
     {
-      title: 'Break Time',
-      time: '00:40 min',
-      note: 'Avg Time 30 min',
-      bgColor: 'bg-yellow-100',
-      textColor: 'text-yellow-800',
-    },
-    {
       title: 'Total Days',
-      time: Object.keys(grouped).length.toString(),
+      time: (totalWorkingDays ?? Object.keys(grouped).length).toString(),
       note: 'Working Days',
       bgColor: 'bg-purple-100',
       textColor: 'text-purple-800',
+    },
+    {
+      title: 'Remaining Days',
+      time: (remainingDays ?? 0).toString(),
+      note: 'This Month',
+      bgColor: 'bg-indigo-100',
+      textColor: 'text-indigo-800',
     },
   ];
 
