@@ -77,7 +77,7 @@ export const isPhysicalOfficePresent = (officeName) => {
   return (
     o.includes('velechery') ||
     o.includes('velachery') ||
-    o.includes('pallikaranai') ||
+    o.includes('pallikarani') ||
     o.includes('tirunelveli') ||
     o.includes('tvl')
   );
@@ -161,7 +161,7 @@ export const logMatchesBranchFilter = (log, allUsers, filterBranch) => {
 export const officePresentBadgeClass = (officeName) => {
   if (!officeName) return 'text-red-600';
   const o = String(officeName).toLowerCase();
-  if (o.includes('pallikaranai')) return 'px-2 py-1 rounded-full text-white bg-green-500 text-xs';
+  if (o.includes('pallikarani')) return 'px-2 py-1 rounded-full text-white bg-green-500 text-xs';
   if (o.includes('velechery')) return 'px-2 py-1 rounded-full text-white bg-blue-500 text-xs';
   if (o.includes('tirunelveli') || o.includes('tvl')) {
     return 'px-2 py-1 rounded-full text-white bg-amber-600 text-xs';
