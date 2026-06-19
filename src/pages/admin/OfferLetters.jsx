@@ -53,6 +53,7 @@ const OfferLetters = () => {
     noticePeriod: '',
     founderName: 'Sivagaminathan',
     directorName: '',
+    branchHeadName: '',
     signatoryTitle: 'Founder',
   });
   const [titleText, setTitleText] = useState('EMPLOYMENT OFFER LETTER');
@@ -215,9 +216,12 @@ We wish you a long and prosperous career with us.`);
     const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);
     const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
     const signatoryTitle = form.signatoryTitle?.trim() || 'Founder';
-    const signatoryName = signatoryTitle === 'Director'
-      ? (form.directorName?.trim() || '')
-      : (form.founderName?.trim() || 'Sivagaminathan');
+    const signatoryNameByTitle = {
+      Founder: form.founderName?.trim() || 'Sivagaminathan',
+      Director: form.directorName?.trim() || '',
+      'Branch Head': form.branchHeadName?.trim() || '',
+    };
+    const signatoryName = signatoryNameByTitle[signatoryTitle] || '';
     const company = form.company?.trim() || '';
 
     let y = startY;
@@ -230,7 +234,7 @@ We wish you a long and prosperous career with us.`);
     page.drawText(signatoryName, { x, y, size: fontSize, font: fontBold, color: titleColor });
     y -= lineHeight;
 
-    // 3. Designation (Founder / Director)
+    // 3. Designation (Founder / Director / Branch Head)
     page.drawText(signatoryTitle, { x, y, size: fontSize, font: fontBold, color: titleColor });
     y -= lineHeight;
 
@@ -545,6 +549,14 @@ We wish you a long and prosperous career with us.`);
               onChange={(e) => handleChange('directorName', e.target.value)}
             />
 
+            <TextField
+              label="Branch Head Name"
+              fullWidth
+              sx={{ mb: 2 }}
+              value={form.branchHeadName}
+              onChange={(e) => handleChange('branchHeadName', e.target.value)}
+            />
+
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel id="signatory-title-label">Designation</InputLabel>
               <Select
@@ -555,6 +567,7 @@ We wish you a long and prosperous career with us.`);
               >
                 <MenuItem value="Founder">Founder</MenuItem>
                 <MenuItem value="Director">Director</MenuItem>
+                <MenuItem value="Branch Head">Branch Head</MenuItem>
               </Select>
             </FormControl>
 
