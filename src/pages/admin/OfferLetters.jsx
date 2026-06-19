@@ -45,33 +45,37 @@ const stripSignOffFromBody = (text) => {
   return text;
 };
 
-const OfferLetters = () => {
-  const [candidates, setCandidates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState('');
-  const [form, setForm] = useState({
-    candidateName: '',
-    designation: '',
-    department: '',
-    company: '',
-    salary: '',
-    addressLine1: '',
-    addressLine2: '',
-    offerDate: new Date().toISOString().slice(0, 10),
-    joiningDate: '',
-    email: '',
-    probationPeriod: '',
-    workingHours: '',
-    workLocation: '',
-    workLocationBranch: '',
-    noticePeriod: '',
-    founderName: 'Sivagaminathan',
-    directorName: '',
-    branchHeadName: '',
-    signatoryTitle: 'Founder',
-  });
-  const [titleText, setTitleText] = useState('EMPLOYMENT OFFER LETTER');
-  const [body, setBody] = useState(`Date: {{date}}
+const LETTER_TEMPLATES = {
+  Standard: {
+    title: 'OFFER LETTER',
+    body: `To,
+{{name}},
+{{addressLine1}},
+{{addressLine2}}.
+
+**Subject: Offer Letter for the Position of {{designation}}**
+
+**Dear {{name}},**
+
+We are pleased to offer you the position of **{{designation}}** at **{{company}}**. Based on your qualifications, experience, and performance during the selection process, we believe that you will be a valuable addition to our team.
+
+Your employment with **{{company}}** will commence on **{{joiningDate}}**. On your joining date, you will be required to report to your designated reporting manager or management representative. Your annual compensation for this position will be **{{salary}}**, along with other benefits and entitlements as per the company's policies.
+
+Your roles and responsibilities will be communicated in detail by your reporting manager. We expect you to perform your duties with dedication, professionalism, and integrity while adhering to all company policies, rules, and regulations.
+
+This offer of employment is subject to the successful verification of all documents, credentials, and information provided by you during the recruitment process.
+
+During your employment with **{{company}}**, you will be required to maintain strict confidentiality regarding company information, internal processes, client data, and any other proprietary information. Any breach of confidentiality or professional conduct may result in disciplinary action, including termination of employment.
+
+To confirm your acceptance of this offer, please sign and return a copy of this letter or provide your confirmation via email before your joining date.
+
+We are excited to welcome you to the **{{company}}** team and look forward to your contributions and success with us. We wish you a rewarding and successful career journey ahead.
+
+If you have any questions or require further clarification, please feel free to contact the Founder.`,
+  },
+  Employment: {
+    title: 'EMPLOYMENT OFFER LETTER',
+    body: `Date: {{date}}
 
 To,
 {{name}},
@@ -103,12 +107,38 @@ You will be responsible for performing duties associated with your role and any 
 4. The company reserves the right to modify job responsibilities, reporting structures, and operational requirements based on business needs.
 5. Either party may terminate the employment relationship by providing notice as per company policy.
 
-**Acceptance of Offer**
-Please sign and return a copy of this letter as confirmation of your acceptance of the employment offer. Your employment shall be deemed effective upon successful completion of all joining formalities and submission of required documents.
+We are excited to welcome you to the **{{company}}** family and look forward to your valuable contribution in shaping confident communicators and future professionals.`,
+  },
+};
 
-We are delighted to welcome you to the **{{company}}** family and look forward to a successful and mutually rewarding association.
-
-We wish you a long and prosperous career with us.`);
+const OfferLetters = () => {
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState('');
+  const [form, setForm] = useState({
+    candidateName: '',
+    designation: '',
+    department: '',
+    company: '',
+    salary: '',
+    addressLine1: '',
+    addressLine2: '',
+    offerDate: new Date().toISOString().slice(0, 10),
+    joiningDate: '',
+    email: '',
+    probationPeriod: '',
+    workingHours: '',
+    workLocation: '',
+    workLocationBranch: '',
+    noticePeriod: '',
+    founderName: 'Sivagaminathan',
+    directorName: '',
+    branchHeadName: '',
+    signatoryTitle: 'Founder',
+  });
+  const [letterTemplate, setLetterTemplate] = useState('Standard');
+  const [titleText, setTitleText] = useState(LETTER_TEMPLATES.Standard.title);
+  const [body, setBody] = useState(LETTER_TEMPLATES.Standard.body);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -605,6 +635,25 @@ We wish you a long and prosperous career with us.`);
                 <MenuItem value="Founder">Founder</MenuItem>
                 <MenuItem value="Director">Director</MenuItem>
                 <MenuItem value="Branch Head">Branch Head</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="letter-template-label">Letter Template</InputLabel>
+              <Select
+                labelId="letter-template-label"
+                value={letterTemplate}
+                label="Letter Template"
+                onChange={(e) => {
+                  const key = e.target.value;
+                  const preset = LETTER_TEMPLATES[key];
+                  setLetterTemplate(key);
+                  setTitleText(preset.title);
+                  setBody(preset.body);
+                }}
+              >
+                <MenuItem value="Standard">Standard (any role)</MenuItem>
+                <MenuItem value="Employment">Employment Offer Letter (Edutech wording)</MenuItem>
               </Select>
             </FormControl>
 
