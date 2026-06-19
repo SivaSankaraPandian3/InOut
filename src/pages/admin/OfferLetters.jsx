@@ -39,6 +39,7 @@ const OfferLetters = () => {
   const [form, setForm] = useState({
     candidateName: '',
     designation: '',
+    department: '',
     company: '',
     salary: '',
     addressLine1: '',
@@ -50,32 +51,48 @@ const OfferLetters = () => {
     workLocation: '',
     noticePeriod: '',
     founderName: 'Sivagaminathan',
+    directorName: '',
+    signatoryTitle: 'Founder',
   });
-  const [titleText, setTitleText] = useState('OFFER LETTER');
-  const [body, setBody] = useState(`To,
+  const [titleText, setTitleText] = useState('EMPLOYMENT OFFER LETTER');
+  const [body, setBody] = useState(`Date: {{date}}
+
+To,
 {{name}},
 {{addressLine1}},
 {{addressLine2}}.
 
-**Subject: Offer Letter for the Position of {{designation}}**
+**Subject: Offer of Employment**
 
 **Dear {{name}},**
 
-We are pleased to offer you the position of **{{designation}}** at **{{company}}**. Based on your qualifications, experience, and performance during the selection process, we believe that you will be a valuable addition to our team.
+We are pleased to extend to you an offer of employment with **{{company}}** for the position of **{{designation}}**.
 
-Your employment with **{{company}}** will commence on **{{joiningDate}}**. On your joining date, you will be required to report to your designated reporting manager or management representative. Your annual compensation for this position will be **{{salary}}**, along with other benefits and entitlements as per the company's policies.
+Based on your qualifications, skills, and experience, your Annual Cost to Company (CTC) will be **Rs. {{salary}}**. We are confident that you will be a valuable addition to our team. We are excited to welcome you to our organization and look forward to your contribution towards our continued growth and success.
 
-Your roles and responsibilities will be communicated in detail by your reporting manager. We expect you to perform your duties with dedication, professionalism, and integrity while adhering to all company policies, rules, and regulations.
+**Employment Details**
+Designation: {{designation}}
+Department: {{department}}
+Date of Joining: {{joiningDate}}
+Employment Type: Full-Time
+Work Location: {{workLocation}}
 
-This offer of employment is subject to the successful verification of all documents, credentials, and information provided by you during the recruitment process.
+**Roles and Responsibilities**
+You will be responsible for performing duties associated with your role and any additional responsibilities assigned by the management from time to time. You are expected to maintain the highest standards of professionalism, integrity, and ethical conduct while representing the organization.
 
-During your employment with **{{company}}**, you will be required to maintain strict confidentiality regarding company information, internal processes, client data, and any other proprietary information. Any breach of confidentiality or professional conduct may result in disciplinary action, including termination of employment.
+**Terms and Conditions**
+1. Your employment will be governed by the policies, rules, and regulations of **{{company}}**.
+2. You shall maintain confidentiality of all company information, client data, business strategies, intellectual property, and other proprietary information.
+3. Any violation of company policies, code of conduct, or unethical behavior may result in disciplinary action, including termination of employment.
+4. The company reserves the right to modify job responsibilities, reporting structures, and operational requirements based on business needs.
+5. Either party may terminate the employment relationship by providing notice as per company policy.
 
-To confirm your acceptance of this offer, please sign and return a copy of this letter or provide your confirmation via email before your joining date.
+**Acceptance of Offer**
+Please sign and return a copy of this letter as confirmation of your acceptance of the employment offer. Your employment shall be deemed effective upon successful completion of all joining formalities and submission of required documents.
 
-We are excited to welcome you to the **{{company}}** team and look forward to your contributions and success with us. We wish you a rewarding and successful career journey ahead.
+We are delighted to welcome you to the **{{company}}** family and look forward to a successful and mutually rewarding association.
 
-If you have any questions or require further clarification, please feel free to contact the Founder.`);
+We wish you a long and prosperous career with us.`);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -109,6 +126,7 @@ If you have any questions or require further clarification, please feel free to 
         ...prev,
         candidateName: cand.name || '',
         designation: cand.position || '',
+        department: cand.department || '',
         company: cand.company || '',
         salary: cand.salary || '',
         addressLine1: cand.addressLine1 || cand.address?.line1 || cand.address?.addressLine1 || cand.location || '',
@@ -175,6 +193,8 @@ If you have any questions or require further clarification, please feel free to 
     const replaced = template
       .replace(/{{\s*name\s*}}/gi, data.candidateName || '')
       .replace(/{{\s*designation\s*}}/gi, data.designation || '')
+      .replace(/{{\s*department\s*}}/gi, data.department || '')
+      .replace(/{{\s*date\s*}}/gi, formatJoiningDate(new Date().toISOString().slice(0, 10)))
       .replace(/{{\s*company\s*}}/gi, data.company || '')
       .replace(/{{\s*salary\s*}}/gi, data.salary || '')
       .replace(/{{\s*joiningDate\s*}}/gi, data.joiningDate ? formatJoiningDate(data.joiningDate) : '')
@@ -193,7 +213,10 @@ If you have any questions or require further clarification, please feel free to 
     const lineHeight = fontSize + 1.5;
     const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);
     const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
-    const founderName = form.founderName?.trim() || 'Sivagaminathan';
+    const signatoryTitle = form.signatoryTitle?.trim() || 'Founder';
+    const signatoryName = signatoryTitle === 'Director'
+      ? (form.directorName?.trim() || '')
+      : (form.founderName?.trim() || 'Sivagaminathan');
     const company = form.company?.trim() || '';
 
     let y = startY;
@@ -202,12 +225,12 @@ If you have any questions or require further clarification, please feel free to 
     page.drawText('Warm Regards,', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
     y -= lineHeight + 4;
 
-    // 2. Sivagaminathan
-    page.drawText(founderName, { x, y, size: fontSize, font: fontBold, color: titleColor });
+    // 2. Signatory name
+    page.drawText(signatoryName, { x, y, size: fontSize, font: fontBold, color: titleColor });
     y -= lineHeight;
 
-    // 3. Founder
-    page.drawText('Founder', { x, y, size: fontSize, font: fontBold, color: titleColor });
+    // 3. Designation (Founder / Director)
+    page.drawText(signatoryTitle, { x, y, size: fontSize, font: fontBold, color: titleColor });
     y -= lineHeight;
 
     // 4. Urbancode (company)
@@ -307,6 +330,8 @@ If you have any questions or require further clarification, please feel free to 
         return parts;
       };
 
+      const DEAR_LINE_GAP = 11;
+
       const buildLayout = (fontSize) => {
         const lineHeight = fontSize + 1.5;
         const paragraphGap = 3;
@@ -320,6 +345,12 @@ If you have any questions or require further clarification, please feel free to 
         const visualLines = [];
 
         for (const rawLine of sourceLines) {
+          const isDearLine = /^dear\b/i.test(rawLine.trim());
+
+          if (isDearLine && visualLines.length > 0) {
+            visualLines.push({ words: [], isParagraphBreak: true, gap: DEAR_LINE_GAP });
+          }
+
           const segments = tokenizeLineForBold(rawLine);
           const words = [];
           segments.forEach(seg => {
@@ -352,13 +383,13 @@ If you have any questions or require further clarification, please feel free to 
             lineWidth = lineWidth + (lineWords.length > 1 ? spaceWidth : 0) + wordWidth;
           }
           pushLine();
-          visualLines.push({ words: [], isParagraphBreak: true });
+          visualLines.push({ words: [], isParagraphBreak: true, gap: isDearLine ? DEAR_LINE_GAP : undefined });
         }
 
         let totalHeight = 0;
         visualLines.forEach((vl, idx) => {
           if (vl.isParagraphBreak) {
-            if (idx > 0 && idx < visualLines.length - 1) totalHeight += paragraphGap;
+            if (idx > 0 && idx < visualLines.length - 1) totalHeight += (vl.gap ?? paragraphGap);
             return;
           }
           totalHeight += lineHeight;
@@ -383,7 +414,7 @@ If you have any questions or require further clarification, please feel free to 
 
       for (const vl of visualLines) {
         if (vl.isParagraphBreak) {
-          cursorY -= paragraphGap;
+          cursorY -= (vl.gap ?? paragraphGap);
           continue;
         }
         if (vl.words.length === 0) continue;
@@ -486,6 +517,7 @@ If you have any questions or require further clarification, please feel free to 
             <TextField label="Address Line 1" fullWidth sx={{ mb: 2 }} value={form.addressLine1} onChange={(e) => handleChange('addressLine1', e.target.value)} />
             <TextField label="Address Line 2" fullWidth sx={{ mb: 2 }} value={form.addressLine2} onChange={(e) => handleChange('addressLine2', e.target.value)} />
             <TextField label="Designation" fullWidth sx={{ mb: 2 }} value={form.designation} onChange={(e) => handleChange('designation', e.target.value)} />
+            <TextField label="Department" fullWidth sx={{ mb: 2 }} value={form.department} onChange={(e) => handleChange('department', e.target.value)} />
             <TextField label="Company" fullWidth sx={{ mb: 2 }} value={form.company} onChange={(e) => handleChange('company', e.target.value)} />
             <TextField label="Salary" fullWidth sx={{ mb: 2 }} value={form.salary} onChange={(e) => handleChange('salary', e.target.value)} />
             <TextField label="Joining Date" type="date" fullWidth sx={{ mb: 2 }} value={form.joiningDate} onChange={(e) => handleChange('joiningDate', e.target.value)} InputLabelProps={{ shrink: true }} />
@@ -502,6 +534,27 @@ If you have any questions or require further clarification, please feel free to 
               value={form.founderName}
               onChange={(e) => handleChange('founderName', e.target.value)}
             />
+
+            <TextField
+              label="Director Name"
+              fullWidth
+              sx={{ mb: 2 }}
+              value={form.directorName}
+              onChange={(e) => handleChange('directorName', e.target.value)}
+            />
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="signatory-title-label">Designation</InputLabel>
+              <Select
+                labelId="signatory-title-label"
+                value={form.signatoryTitle}
+                label="Designation"
+                onChange={(e) => handleChange('signatoryTitle', e.target.value)}
+              >
+                <MenuItem value="Founder">Founder</MenuItem>
+                <MenuItem value="Director">Director</MenuItem>
+              </Select>
+            </FormControl>
 
             <TextField
               label="Title"
