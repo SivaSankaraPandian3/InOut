@@ -3,6 +3,7 @@ import { rgb } from 'pdf-lib';
 const STRAY_ICON_MASK = { x: 318, y: 2, w: 72, h: 24 };
 const PHONE_TEXT_MASK = { x: 300, y: 18, w: 210, h: 18 };
 const HEADER_ADDRESS_MASK = { x: 90, y: 749, w: 410, h: 15 };
+const HEADER_CIN_GST_MASK = { x: 90, y: 735, w: 410, h: 13 };
 
 const fixLetterheadFooter = (page) => {
   const white = rgb(1, 1, 1);
@@ -15,6 +16,9 @@ const fixLetterheadFooter = (page) => {
 
   const addressMask = HEADER_ADDRESS_MASK;
   page.drawRectangle({ x: addressMask.x, y: addressMask.y, width: addressMask.w, height: addressMask.h, color: white, borderWidth: 0 });
+
+  const cinGstMask = HEADER_CIN_GST_MASK;
+  page.drawRectangle({ x: cinGstMask.x, y: cinGstMask.y, width: cinGstMask.w, height: cinGstMask.h, color: white, borderWidth: 0 });
 };
 
 export const shrinkLetterheadPhoneIconOnAllPages = async (pdfDoc) => {
