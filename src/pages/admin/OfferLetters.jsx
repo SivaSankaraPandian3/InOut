@@ -25,6 +25,18 @@ import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFoote
 const SIGN_OFF_GAP = 14;
 const MIN_PAGE_BOTTOM = 88;
 
+const OFFICE_ADDRESSES = {
+  Chennai: '9/29, 5th Street, Kamakoti Nagar, Pallikaranai, Chennai - 600100',
+  Tirunelveli: 'Fab Sapphire Towers, No 29/5, 4th Floor, South Bypass Road, Tirunelveli - 627005',
+};
+
+const guessWorkLocationBranch = (address) => {
+  if (!address) return '';
+  if (/tirunelveli/i.test(address)) return 'Tirunelveli';
+  if (/chennai|pallikaranai|velachery|velechery/i.test(address)) return 'Chennai';
+  return 'Other';
+};
+
 const stripSignOffFromBody = (text) => {
   const lines = text.split('\n');
   const signOffIndex = lines.findIndex((line) => /^\s*(\*\*)?warm\s+regards?,?(\*\*)?\s*$/i.test(line.trim()));
@@ -50,6 +62,7 @@ const OfferLetters = () => {
     probationPeriod: '',
     workingHours: '',
     workLocation: '',
+    workLocationBranch: '',
     noticePeriod: '',
     founderName: 'Sivagaminathan',
     directorName: '',
@@ -138,6 +151,7 @@ We wish you a long and prosperous career with us.`);
         probationPeriod: cand.probationPeriod || '',
         workingHours: cand.workingHours || '',
         workLocation: cand.workLocation || '',
+        workLocationBranch: guessWorkLocationBranch(cand.workLocation),
         noticePeriod: cand.noticePeriod || '',
       }));
     }
@@ -530,7 +544,29 @@ We wish you a long and prosperous career with us.`);
 
             <TextField label="Probation Period (months)" fullWidth sx={{ mb: 2 }} value={form.probationPeriod} onChange={(e) => handleChange('probationPeriod', e.target.value)} />
             <TextField label="Working Hours" fullWidth sx={{ mb: 2 }} value={form.workingHours} onChange={(e) => handleChange('workingHours', e.target.value)} />
-            <TextField label="Work Location" fullWidth sx={{ mb: 2 }} value={form.workLocation} onChange={(e) => handleChange('workLocation', e.target.value)} />
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="work-location-branch-label">Work Location</InputLabel>
+              <Select
+                labelId="work-location-branch-label"
+                value={form.workLocationBranch}
+                label="Work Location"
+                onChange={(e) => {
+                  const branch = e.target.value;
+                  setForm(prev => ({
+                    ...prev,
+                    workLocationBranch: branch,
+                    workLocation: OFFICE_ADDRESSES[branch] || (branch === 'Other' ? '' : prev.workLocation),
+                  }));
+                }}
+              >
+                <MenuItem value="Chennai">Chennai</MenuItem>
+                <MenuItem value="Tirunelveli">Tirunelveli</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+            {form.workLocationBranch === 'Other' && (
+              <TextField label="Work Location (custom)" fullWidth sx={{ mb: 2 }} value={form.workLocation} onChange={(e) => handleChange('workLocation', e.target.value)} />
+            )}
             <TextField label="Notice Period (days)" fullWidth sx={{ mb: 2 }} value={form.noticePeriod} onChange={(e) => handleChange('noticePeriod', e.target.value)} />
 
             <TextField
