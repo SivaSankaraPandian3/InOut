@@ -44,6 +44,7 @@ const OfferLetters = () => {
     salary: '',
     addressLine1: '',
     addressLine2: '',
+    offerDate: new Date().toISOString().slice(0, 10),
     joiningDate: '',
     email: '',
     probationPeriod: '',
@@ -194,7 +195,7 @@ We wish you a long and prosperous career with us.`);
       .replace(/{{\s*name\s*}}/gi, data.candidateName || '')
       .replace(/{{\s*designation\s*}}/gi, data.designation || '')
       .replace(/{{\s*department\s*}}/gi, data.department || '')
-      .replace(/{{\s*date\s*}}/gi, formatJoiningDate(new Date().toISOString().slice(0, 10)))
+      .replace(/{{\s*date\s*}}/gi, formatJoiningDate(data.offerDate || new Date().toISOString().slice(0, 10)))
       .replace(/{{\s*company\s*}}/gi, data.company || '')
       .replace(/{{\s*salary\s*}}/gi, data.salary || '')
       .replace(/{{\s*joiningDate\s*}}/gi, data.joiningDate ? formatJoiningDate(data.joiningDate) : '')
@@ -514,6 +515,7 @@ We wish you a long and prosperous career with us.`);
             </FormControl>
 
             <TextField label="Name" fullWidth sx={{ mb: 2 }} value={form.candidateName} onChange={(e) => handleChange('candidateName', e.target.value)} />
+            <TextField label="Offer Date" type="date" fullWidth sx={{ mb: 2 }} value={form.offerDate} onChange={(e) => handleChange('offerDate', e.target.value)} InputLabelProps={{ shrink: true }} />
             <TextField label="Address Line 1" fullWidth sx={{ mb: 2 }} value={form.addressLine1} onChange={(e) => handleChange('addressLine1', e.target.value)} />
             <TextField label="Address Line 2" fullWidth sx={{ mb: 2 }} value={form.addressLine2} onChange={(e) => handleChange('addressLine2', e.target.value)} />
             <TextField label="Designation" fullWidth sx={{ mb: 2 }} value={form.designation} onChange={(e) => handleChange('designation', e.target.value)} />
