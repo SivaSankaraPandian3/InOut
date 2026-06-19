@@ -4,6 +4,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
 import letterheadUrl from '../../assets/letterhead.pdf';
 import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
+import { sanitizeTextForStandardFonts } from '../../utils/pdfTextSanitizer';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
 
@@ -98,7 +99,7 @@ const InternshipOfferLetter = () => {
       const measureWord = (text, font) => font.widthOfTextAtSize(text, fontSize) + letterSpacing * Math.max(0, text.length - 1);
 
   // allow placeholders in the body like {{studentName}} and also respect manual edits
-  const finalBody = replacePlaceholders(body, form);
+  const finalBody = sanitizeTextForStandardFonts(replacePlaceholders(body, form), [fontRegular, fontBold]);
   const lines = finalBody.split('\n');
       for (const rawLine of lines) {
         const words = rawLine.split(/\s+/).filter(Boolean);

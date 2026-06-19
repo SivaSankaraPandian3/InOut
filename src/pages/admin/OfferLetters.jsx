@@ -21,6 +21,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import letterheadUrl from '../../assets/letterhead.pdf';
 import Swal from 'sweetalert2';
 import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
+import { sanitizeTextForStandardFonts } from '../../utils/pdfTextSanitizer';
 
 const SIGN_OFF_GAP = 14;
 const MIN_PAGE_BOTTOM = 88;
@@ -318,9 +319,6 @@ We wish you a long and prosperous career with us.`);
       const signOffReserve = signatureBytes ? 140 : 92;
       const maxBodyHeight = bodyStartY - MIN_PAGE_BOTTOM - signOffReserve - SIGN_OFF_GAP;
 
-      const finalBody = stripSignOffFromBody(replacePlaceholders(body, form));
-      const sourceLines = finalBody.split('\n');
-
       const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
       let fontBold = fontRegular;
       try {
@@ -328,6 +326,9 @@ We wish you a long and prosperous career with us.`);
       } catch {
         fontBold = fontRegular;
       }
+
+      const finalBody = stripSignOffFromBody(sanitizeTextForStandardFonts(replacePlaceholders(body, form), [fontRegular, fontBold]));
+      const sourceLines = finalBody.split('\n');
 
       const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
       const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);

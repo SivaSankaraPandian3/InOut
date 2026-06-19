@@ -11,6 +11,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
 import letterheadUrl from '../../assets/letterhead.pdf';
 import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
+import { sanitizeTextForStandardFonts } from '../../utils/pdfTextSanitizer';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
 
@@ -76,12 +77,12 @@ const InternshipLetter = () => {
 
       const margins = { top: 143, bottom: 146, left: 40, right: 10 };
 
-      const finalBody = replacePlaceholders(body, form);
-      const lines = finalBody.split('\n');
+      const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      let fontBold = fontRegular;
+      try { fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold); } catch (e) {}
 
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-  let fontBold = fontRegular;
-  try { fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold); } catch (e) {}
+      const finalBody = sanitizeTextForStandardFonts(replacePlaceholders(body, form), [fontRegular, fontBold]);
+      const lines = finalBody.split('\n');
   // Title/bold color (#2b2b2b) and body color (#858585)
   const titleColor = rgb(53 / 255, 53 / 255, 53 / 255); // #2b2b2b
   const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255); // #858585

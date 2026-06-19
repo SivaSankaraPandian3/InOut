@@ -21,6 +21,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
 import letterheadUrl from '../../assets/letterhead.pdf';
 import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFooter';
+import { sanitizeTextForStandardFonts } from '../../utils/pdfTextSanitizer';
 
 const ExperienceLetter = () => {
   const [candidates, setCandidates] = useState([]);
@@ -94,12 +95,12 @@ const ExperienceLetter = () => {
 
       const margins = { top: 150, bottom: 146, left: 40, right: 10 };
 
-      const finalBody = replacePlaceholders(body, form);
-      const lines = finalBody.split('\n');
+      const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      let fontBold = fontRegular;
+      try { fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold); } catch (e) {}
 
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-  let fontBold = fontRegular;
-  try { fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold); } catch (e) {}
+      const finalBody = sanitizeTextForStandardFonts(replacePlaceholders(body, form), [fontRegular, fontBold]);
+      const lines = finalBody.split('\n');
   // Title/bold and body color (match OfferLetters)
   const titleColor = rgb(53 / 255, 53 / 255, 53 / 255);
   const bodyColor = rgb(60 / 255, 60 / 255, 60 / 255);
