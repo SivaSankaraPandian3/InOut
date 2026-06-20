@@ -10,13 +10,17 @@ import { API_ENDPOINTS } from '../../utils/api';
 
 const InternshipOfferLetter = () => {
   const [form, setForm] = useState({
-    studentName: '',
-    collegeName: '',
-    degree: '',
-    registrationNumber: '',
-    startDate: '',
-    duration: '',
-    company: ''
+    candidateName: '',
+    designation: '',
+    department: '',
+    company: '',
+    salary: '',
+    employmentType: '',
+    addressLine1: '',
+    addressLine2: '',
+    joiningDate: '',
+    workLocation: '',
+    reportingTo: ''
   });
 
   const [candidates, setCandidates] = useState([]);
@@ -44,7 +48,67 @@ const InternshipOfferLetter = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  const defaultBody = (f) => `To,\n${f.studentName || ''},\n${f.collegeName || ''},\n${f.degree || ''}\nReg no : ${f.registrationNumber || ''}\n\nSubject: Internship offer letter effective from ${f.startDate ? new Date(f.startDate).toLocaleDateString('en-GB') : ''}.\n\nDear ${f.studentName || ''},\n\nWe are pleased to inform you that you have been selected for an internship at\n${f.company || ''} in the domain of Full Stack Web Development\nfor duration of ${f.duration || ''}.\n\nDuring your internship, you will be assigned practical tasks, projects, and\nresponsibilities aligned with your learning path. You are expected to maintain\nprofessional conduct, adhere to company policies, and complete all assigned work\nwithin the given timelines.\n\nPlease note that this internship does not guarantee permanent employment.\nHowever, interns who demonstrate exceptional performance, strong technical skills,\nprofessionalism, and a consistent commitment to learning may be considered for\nfull-time or part-time employment opportunities with ${f.company || ''}, subject to organizational requirements and role availability.\n\nWe look forward to having you as a part of the ${f.company || ''} learning ecosystem and\nwish you a productive and enriching internship journey.`;
+  const formatLongDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(`${dateStr}T12:00:00`);
+      if (Number.isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const defaultBody = (f) => `To,
+Mr./Ms. ${f.candidateName || ''},
+Address: ${f.addressLine1 || ''}
+${f.addressLine2 || ''}
+
+Subject: Offer of Employment - ${f.designation || ''}
+
+Dear Mr./Ms. ${f.candidateName || ''}
+
+We are pleased to offer you employment with ${f.company || ''} for the position of ${f.designation || ''} with an Annual Cost to Company (CTC): Rs. ${f.salary || ''}. Your expertise, communication skills, and passion for training have impressed us, and we are delighted to welcome you to our learning and development ecosystem. We believe your contribution will play a vital role in empowering learners with the language proficiency and communication skills required for academic, professional, and personal success.
+
+Employment Details
+Designation: ${f.designation || ''}
+Department: ${f.department || ''}
+Employment Type: ${f.employmentType || ''}
+Date of Joining: ${formatLongDate(f.joiningDate)}
+Work Location: ${f.workLocation || ''}
+Reporting To: ${f.reportingTo || ''}
+
+Key Responsibilities
+As a ${f.designation || 'Trainer'}, your responsibilities will include:
+- Delivering high-quality language training sessions to students and professionals.
+- Developing learners' speaking, listening, reading, and writing skills.
+- Conducting assessments, evaluations, and progress tracking.
+- Preparing lesson plans, training materials, assignments, and learning activities.
+- Supporting students in improving communication, presentation, and interpersonal skills.
+- Maintaining attendance records, performance reports, and training documentation.
+- Participating in curriculum enhancement and academic development initiatives.
+- Upholding the educational standards and values of ${f.company || ''}.
+
+Professional Expectations
+You are expected to:
+- Demonstrate professionalism, punctuality, and commitment to excellence.
+- Foster a positive and inclusive learning environment.
+- Maintain confidentiality of student information and organizational data.
+- Adhere to company policies, academic guidelines, and code of conduct.
+- Represent the organization with integrity and professionalism at all times.
+
+Terms and Conditions
+1. Your employment shall be governed by the rules, regulations, and policies of ${f.company || ''}.
+2. All training materials, content, presentations, assessments, and intellectual property created during employment shall remain the property of the organization.
+3. Any misconduct, breach of confidentiality, unethical behavior, or violation of company policies may result in disciplinary action, including termination of employment.
+4. The company reserves the right to modify responsibilities and reporting structures based on organizational requirements.
+5. Either party may terminate the employment relationship by providing notice as per company policy.
+
+We are excited to welcome you to the ${f.company || ''} family and look forward to your valuable contribution in shaping confident communicators and future professionals.
+
+Warm Regards,
+Founder
+${f.company || ''}`;
 
   const [body, setBody] = useState(defaultBody(form));
 
@@ -202,35 +266,36 @@ const InternshipOfferLetter = () => {
     if (!selected) return;
     const cand = candidates.find(c => c._id === selected);
     if (cand) {
-      setForm({
-        studentName: cand.name || '',
-        collegeName: cand.collegeName || cand.college || '',
-        degree: cand.degree || cand.position || '',
-        registrationNumber: cand.registrationNumber || cand.regNo || '',
-        startDate: cand.startDate ? cand.startDate.slice(0,10) : '',
-        duration: cand.duration || '',
-        company: cand.company || ''
-      });
+      const next = {
+        candidateName: cand.name || '',
+        designation: cand.position || '',
+        department: cand.department || '',
+        company: cand.company || '',
+        salary: cand.salary || '',
+        employmentType: cand.employmentType || '',
+        addressLine1: cand.addressLine1 || cand.address?.line1 || cand.address?.addressLine1 || cand.location || '',
+        addressLine2: cand.addressLine2 || cand.address?.line2 || cand.address?.addressLine2 || cand.city || '',
+        joiningDate: cand.dateOfJoining ? cand.dateOfJoining.slice(0, 10) : '',
+        workLocation: cand.workLocation || '',
+        reportingTo: cand.reportingTo || ''
+      };
+      setForm(next);
       // populate the editable body with template filled for this candidate
-      setBody(defaultBody({
-        studentName: cand.name || '',
-        collegeName: cand.collegeName || cand.college || '',
-        degree: cand.degree || cand.position || '',
-        registrationNumber: cand.registrationNumber || cand.regNo || '',
-        startDate: cand.startDate ? cand.startDate.slice(0,10) : '',
-        duration: cand.duration || '',
-        company: cand.company || ''
-      }));
+      setBody(defaultBody(next));
     }
   }, [selected, candidates]);
 
   const replacePlaceholders = (template, data) => {
-    return template.replace(/{{\s*studentName\s*}}/gi, data.studentName || '')
-      .replace(/{{\s*collegeName\s*}}/gi, data.collegeName || '')
-      .replace(/{{\s*degree\s*}}/gi, data.degree || '')
-      .replace(/{{\s*registrationNumber\s*}}/gi, data.registrationNumber || '')
-      .replace(/{{\s*startDate\s*}}/gi, data.startDate || '')
-      .replace(/{{\s*duration\s*}}/gi, data.duration || '')
+    return template.replace(/{{\s*name\s*}}/gi, data.candidateName || '')
+      .replace(/{{\s*designation\s*}}/gi, data.designation || '')
+      .replace(/{{\s*department\s*}}/gi, data.department || '')
+      .replace(/{{\s*employmentType\s*}}/gi, data.employmentType || '')
+      .replace(/{{\s*joiningDate\s*}}/gi, formatLongDate(data.joiningDate))
+      .replace(/{{\s*workLocation\s*}}/gi, data.workLocation || '')
+      .replace(/{{\s*reportingTo\s*}}/gi, data.reportingTo || '')
+      .replace(/{{\s*addressLine1\s*}}/gi, data.addressLine1 || '')
+      .replace(/{{\s*addressLine2\s*}}/gi, data.addressLine2 || '')
+      .replace(/{{\s*salary\s*}}/gi, data.salary || '')
       .replace(/{{\s*company\s*}}/gi, data.company || '');
   };
 
@@ -240,14 +305,14 @@ const InternshipOfferLetter = () => {
       try {
         if (pdfBytesData) {
           const { uploadLetterBytes } = await import('../../utils/uploadLetter');
-          await uploadLetterBytes(pdfBytesData, `${form.studentName || 'internship-offer'}.pdf`, selected || undefined);
+          await uploadLetterBytes(pdfBytesData, `${form.candidateName || 'internship-offer'}.pdf`, selected || undefined);
           Swal.fire({ icon: 'success', title: 'Saved', text: 'Letter uploaded to cloud', timer: 1300, showConfirmButton: false });
         }
       } catch (err) {
         console.error('Upload failed', err);
         Swal.fire({ icon: 'warning', title: 'Upload failed', text: 'Letter could not be uploaded to cloud. Download will continue.' });
       } finally {
-        const a = document.createElement('a'); a.href = pdfUrl; a.download = `${form.studentName || 'internship-offer'}.pdf`; a.click();
+        const a = document.createElement('a'); a.href = pdfUrl; a.download = `${form.candidateName || 'internship-offer'}.pdf`; a.click();
       }
     };
     uploadAndDownload();
@@ -276,13 +341,17 @@ const InternshipOfferLetter = () => {
               )}
             </Select>
           </FormControl>
-          <TextField label="Name" fullWidth sx={{ mb: 2 }} value={form.studentName} onChange={(e) => handleChange('studentName', e.target.value)} />
-          <TextField label="College" fullWidth sx={{ mb: 2 }} value={form.collegeName} onChange={(e) => handleChange('collegeName', e.target.value)} />
-          <TextField label="Degree" fullWidth sx={{ mb: 2 }} value={form.degree} onChange={(e) => handleChange('degree', e.target.value)} />
-          <TextField label="Registration Number" fullWidth sx={{ mb: 2 }} value={form.registrationNumber} onChange={(e) => handleChange('registrationNumber', e.target.value)} />
+          <TextField label="Name" fullWidth sx={{ mb: 2 }} value={form.candidateName} onChange={(e) => handleChange('candidateName', e.target.value)} />
+          <TextField label="Address Line 1" fullWidth sx={{ mb: 2 }} value={form.addressLine1} onChange={(e) => handleChange('addressLine1', e.target.value)} />
+          <TextField label="Address Line 2" fullWidth sx={{ mb: 2 }} value={form.addressLine2} onChange={(e) => handleChange('addressLine2', e.target.value)} />
+          <TextField label="Designation" fullWidth sx={{ mb: 2 }} value={form.designation} onChange={(e) => handleChange('designation', e.target.value)} />
+          <TextField label="Department" fullWidth sx={{ mb: 2 }} value={form.department} onChange={(e) => handleChange('department', e.target.value)} />
           <TextField label="Company" fullWidth sx={{ mb: 2 }} value={form.company} onChange={(e) => handleChange('company', e.target.value)} />
-          <TextField label="Start Date" type="date" fullWidth sx={{ mb: 2 }} value={form.startDate} onChange={(e) => handleChange('startDate', e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Duration" fullWidth sx={{ mb: 2 }} value={form.duration} onChange={(e) => handleChange('duration', e.target.value)} />
+          <TextField label="Salary (CTC)" fullWidth sx={{ mb: 2 }} value={form.salary} onChange={(e) => handleChange('salary', e.target.value)} />
+          <TextField label="Employment Type" fullWidth sx={{ mb: 2 }} value={form.employmentType} onChange={(e) => handleChange('employmentType', e.target.value)} />
+          <TextField label="Date of Joining" type="date" fullWidth sx={{ mb: 2 }} value={form.joiningDate} onChange={(e) => handleChange('joiningDate', e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField label="Work Location" fullWidth sx={{ mb: 2 }} value={form.workLocation} onChange={(e) => handleChange('workLocation', e.target.value)} />
+          <TextField label="Reporting To" fullWidth sx={{ mb: 2 }} value={form.reportingTo} onChange={(e) => handleChange('reportingTo', e.target.value)} />
 
           <TextField label="Title" fullWidth sx={{ mb: 2 }} value={titleText} onChange={(e) => setTitleText(e.target.value)} />
           <TextField label="Letter Date" type="date" fullWidth sx={{ mb: 2 }} value={letterDate} onChange={(e) => setLetterDate(e.target.value)} InputLabelProps={{ shrink: true }} />
