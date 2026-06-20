@@ -27,14 +27,16 @@ const SIGN_OFF_GAP = 14;
 const MIN_PAGE_BOTTOM = 88;
 
 const OFFICE_ADDRESSES = {
-  Chennai: '9/29, 5th Street, Kamakoti Nagar, Pallikaranai, Chennai - 600100',
+  'Chennai - Pallikaranai': '9/29, 5th Street, Kamakoti Nagar, Pallikaranai, Chennai - 600100',
+  'Chennai - Velachery': '52/159, Velachery Main Rd, next to GURU NANAK COLLEGE, near Phoenix Marketcity, Anna Garden, Velachery, Chennai, Tamil Nadu 600042',
   Tirunelveli: 'Fab Sapphire Towers, No 29/5, 4th Floor, South Bypass Road, Tirunelveli - 627005',
 };
 
 const guessWorkLocationBranch = (address) => {
   if (!address) return '';
   if (/tirunelveli/i.test(address)) return 'Tirunelveli';
-  if (/chennai|pallikaranai|velachery|velechery/i.test(address)) return 'Chennai';
+  if (/velachery|velechery/i.test(address)) return 'Chennai - Velachery';
+  if (/chennai|pallikaranai/i.test(address)) return 'Chennai - Pallikaranai';
   return 'Other';
 };
 
@@ -44,6 +46,66 @@ const stripSignOffFromBody = (text) => {
   if (signOffIndex >= 0) return lines.slice(0, signOffIndex).join('\n').trimEnd();
   return text;
 };
+
+/** Makes the signature's background transparent so it blends into the white
+ * letter page regardless of whatever color the uploaded image's background is. */
+const removeImageBackground = (file) => new Promise((resolve, reject) => {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      const { width, height } = canvas;
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const { data } = imageData;
+
+      const cornerIndexes = [
+        0,
+        (width - 1) * 4,
+        (height - 1) * width * 4,
+        ((height - 1) * width + (width - 1)) * 4,
+      ];
+      let r = 0, g = 0, b = 0;
+      cornerIndexes.forEach((idx) => { r += data[idx]; g += data[idx + 1]; b += data[idx + 2]; });
+      r /= cornerIndexes.length;
+      g /= cornerIndexes.length;
+      b /= cornerIndexes.length;
+
+      const tolerance = 38;
+      const feather = 22;
+      for (let i = 0; i < data.length; i += 4) {
+        const dr = data[i] - r;
+        const dg = data[i + 1] - g;
+        const db = data[i + 2] - b;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist <= tolerance) {
+          data[i + 3] = 0;
+        } else if (dist <= tolerance + feather) {
+          data[i + 3] = Math.round(data[i + 3] * ((dist - tolerance) / feather));
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      canvas.toBlob((blob) => {
+        if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(blob);
+      }, 'image/png');
+    } catch (err) {
+      reject(err);
+    }
+  };
+  img.onerror = reject;
+  img.src = url;
+});
 
 const LETTER_TEMPLATES = {
   Standard: {
@@ -195,9 +257,14 @@ const OfferLetters = () => {
     if (!file) return;
     setSignatureFile(file);
     setSignaturePreview(URL.createObjectURL(file));
-    const reader = new FileReader();
-    reader.onload = () => setSignatureBytes(reader.result);
-    reader.readAsArrayBuffer(file);
+    removeImageBackground(file)
+      .then((bytes) => setSignatureBytes(bytes))
+      .catch((err) => {
+        console.error('Signature background removal failed, using original image', err);
+        const reader = new FileReader();
+        reader.onload = () => setSignatureBytes(reader.result);
+        reader.readAsArrayBuffer(file);
+      });
   };
 
   const formatJoiningDate = (dateStr) => {
@@ -295,9 +362,12 @@ const OfferLetters = () => {
     if (signatureBytes && signatureFile) {
       try {
         const sigUint8 = new Uint8Array(signatureBytes);
-        const embeddedSig = (signatureFile.type || '').includes('png')
-          ? await pdfDoc.embedPng(sigUint8)
-          : await pdfDoc.embedJpg(sigUint8);
+        let embeddedSig;
+        try {
+          embeddedSig = await pdfDoc.embedPng(sigUint8);
+        } catch {
+          embeddedSig = await pdfDoc.embedJpg(sigUint8);
+        }
 
         const maxSigWidth = 120;
         const maxSigHeight = 48;
@@ -590,7 +660,8 @@ const OfferLetters = () => {
                   }));
                 }}
               >
-                <MenuItem value="Chennai">Chennai</MenuItem>
+                <MenuItem value="Chennai - Pallikaranai">Chennai - Pallikaranai</MenuItem>
+                <MenuItem value="Chennai - Velachery">Chennai - Velachery</MenuItem>
                 <MenuItem value="Tirunelveli">Tirunelveli</MenuItem>
                 <MenuItem value="Other">Other</MenuItem>
               </Select>
