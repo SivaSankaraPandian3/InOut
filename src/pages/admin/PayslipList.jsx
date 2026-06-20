@@ -135,10 +135,6 @@ const PayslipList = () => {
     doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...primaryColor);
     doc.text("Urbancode Edutech Solutions Pvt Ltd", pageWidth / 2, 15, { align: "center" });
 
-    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(...secondaryColor);
-    doc.text("9/29, 5th Street Kamakoti Nagar, Pallikaranai, Chennai - 600100", pageWidth / 2, 20, { align: "center" });
-    doc.text("CINNO - U46512TN2025PTC175901 || GSTNO-33AADCU7262Q1ZR", pageWidth / 2, 24, { align: "center" });
-
     // Payslip Title
     doc.setFontSize(12).setTextColor(...primaryColor);
     doc.text("PAYSLIP", pageWidth / 2, 33, { align: "center" });
