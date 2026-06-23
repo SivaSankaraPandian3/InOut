@@ -20,6 +20,8 @@ export default function ProfileCard() {
     qualification: "",
   dateOfJoining: "",
   dateOfBirth: "",
+    linkedin: "",
+    github: "",
     rolesAndResponsibility: [],
     skills: [],
     bankDetails: {
@@ -66,6 +68,8 @@ export default function ProfileCard() {
           dateOfJoining: data.dateOfJoining || "",
             dateOfBirth: data.dateOfBirth || "",
           dateOfBirth: data.dateOfBirth || "",
+          linkedin: data.linkedin || "",
+          github: data.github || "",
           rolesAndResponsibility: Array.isArray(data.rolesAndResponsibility) ? data.rolesAndResponsibility : [],
           skills: Array.isArray(data.skills) ? data.skills : [],
           bankDetails: {
@@ -362,6 +366,47 @@ export default function ProfileCard() {
               </div>
             </div>
             {/* global save used instead of per-card save */}
+          </div>
+
+          {/* Social Links Card */}
+          <div className="card">
+            <div className="card-header">
+              <h3>Social Links</h3>
+            </div>
+            <div className="education-info">
+              <div className="info-row">
+                 LinkedIn:
+                {(editing === 'social' || isEditingAll) ? (
+                  <input
+                    type="url"
+                    value={profile.linkedin}
+                    onChange={(e) => handleInputChange('linkedin', e.target.value)}
+                    className="edit-input"
+                    placeholder="https://linkedin.com/in/username"
+                  />
+                ) : profile.linkedin ? (
+                  <a href={profile.linkedin} target="_blank" rel="noopener noreferrer">{profile.linkedin}</a>
+                ) : (
+                  <span>Not set</span>
+                )}
+              </div>
+              <div className="info-row">
+                 GitHub:
+                {(editing === 'social' || isEditingAll) ? (
+                  <input
+                    type="url"
+                    value={profile.github}
+                    onChange={(e) => handleInputChange('github', e.target.value)}
+                    className="edit-input"
+                    placeholder="https://github.com/username"
+                  />
+                ) : profile.github ? (
+                  <a href={profile.github} target="_blank" rel="noopener noreferrer">{profile.github}</a>
+                ) : (
+                  <span>Not set</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Education Card */}

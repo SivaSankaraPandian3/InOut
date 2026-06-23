@@ -46,6 +46,8 @@ export const buildUserUpdatePayload = (form) => {
     dateOfBirth: synced.dateOfBirth || undefined,
     address: addressForApi,
     profilePic: synced.profilePic || '',
+    linkedin: synced.linkedin || '',
+    github: synced.github || '',
     skills: Array.isArray(synced.skills) ? synced.skills : [],
     rolesAndResponsibility: Array.isArray(synced.rolesAndResponsibility)
       ? synced.rolesAndResponsibility

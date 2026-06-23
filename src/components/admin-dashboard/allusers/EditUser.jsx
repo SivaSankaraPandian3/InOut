@@ -29,6 +29,8 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
     adminComments: '',
     employeeId: '',
     branch: '',
+    linkedin: '',
+    github: '',
     bankDetails: {
       bankingName: '',
       bankAccountNumber: '',
@@ -265,6 +267,28 @@ const EditUser = ({ userId, onClose, onUpdated, pageMode = false }) => {
                   value={form.rolesAndResponsibility.join(', ')}
                   onChange={(e) => handleArrayField('rolesAndResponsibility', e.target.value)}
                   placeholder="Training, Interview Support"
+                />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-linkedin">LinkedIn Profile</label>
+                <input
+                  id="edit-linkedin"
+                  type="url"
+                  name="linkedin"
+                  value={form.linkedin || ''}
+                  onChange={handleChange}
+                  placeholder="https://linkedin.com/in/username"
+                />
+              </div>
+              <div className="uc-form-field">
+                <label htmlFor="edit-github">GitHub Profile</label>
+                <input
+                  id="edit-github"
+                  type="url"
+                  name="github"
+                  value={form.github || ''}
+                  onChange={handleChange}
+                  placeholder="https://github.com/username"
                 />
               </div>
               <div className="uc-form-check">
