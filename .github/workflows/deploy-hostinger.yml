@@ -61,7 +61,6 @@ jobs:
           port: 21
           local-dir: ./build/
           server-dir: ${{ steps.ftpdir.outputs.dir }}
-          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.git*/**
