@@ -41,11 +41,15 @@ jobs:
       - name: Resolve FTP upload directory
         id: ftpdir
         run: |
-          if [ -n "${{ secrets.FTP_SERVER_DIR }}" ]; then
-            echo "dir=${{ secrets.FTP_SERVER_DIR }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "dir=/public_html/" >> "$GITHUB_OUTPUT"
+          dir="${{ secrets.FTP_SERVER_DIR }}"
+          if [ -z "$dir" ]; then
+            dir="/public_html/"
           fi
+          case "$dir" in
+            */) ;;
+            *) dir="$dir/" ;;
+          esac
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Hostinger (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
