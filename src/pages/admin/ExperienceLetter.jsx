@@ -30,7 +30,7 @@ const ExperienceLetter = () => {
   const [form, setForm] = useState({ candidateName: '', designation: '', company: '', joiningDate: '', relievingDate: '' });
   const [titleText, setTitleText] = useState('EXPERIENCE LETTER');
   const [letterDate, setLetterDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [body, setBody] = useState(`\n\nTo Whom It May Concern,\n\nThis is to certify that {{name}} was employed with {{company}} in the capacity of {{designation}} from {{joiningDate}} to {{relievingDate}}.\n\nDuring the course of their employment, {{name}} was responsible for carrying out assigned duties and responsibilities with dedication and sincerity. They demonstrated a good level of professional competence, discipline, and commitment toward their work. Their conduct throughout the tenure was found to be professional and in accordance with the company's policies and standards.\n\n{{name}} maintained cordial relationships with colleagues, supervisors, and clients, and contributed positively to the work environment. We found them to be reliable and cooperative in performing their assigned tasks and responsibilities.\n\nThis certificate is being issued upon the request of {{name}} for whatever purpose it may serve. We confirm that {{name}} has been relieved from their duties with {{company}} as of {{relievingDate}}.\n\nWe wish {{name}} every success in their future career and personal endeavors.\n\nSincerely,\nFounder\n{{company}}`);
+  const [body, setBody] = useState(`\n\nTo Whom It May Concern,\n\nThis is to certify that **{{name}}** was employed with **{{company}}** in the capacity of {{designation}} from **{{joiningDate}}** to **{{relievingDate}}**.\n\nDuring the course of their employment, {{name}} was responsible for carrying out assigned duties and responsibilities with dedication and sincerity. They demonstrated a good level of professional competence, discipline, and commitment toward their work. Their conduct throughout the tenure was found to be professional and in accordance with the company's policies and standards.\n\n{{name}} maintained cordial relationships with colleagues, supervisors, and clients, and contributed positively to the work environment. We found them to be reliable and cooperative in performing their assigned tasks and responsibilities.\n\nThis certificate is being issued upon the request of {{name}} for whatever purpose it may serve. We confirm that {{name}} has been relieved from their duties with **{{company}}** as of **{{relievingDate}}**.\n\nWe wish {{name}} every success in their future career and personal endeavors.\n\nSincerely,\nFounder\n**{{company}}**`);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -110,10 +110,10 @@ const ExperienceLetter = () => {
       const fontDateSize = 10;
       let dateStr = '';
       try { dateStr = letterDate ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-GB'); } catch (e) { dateStr = new Date().toLocaleDateString('en-GB'); }
-      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
+      const dateWidth = fontBold.widthOfTextAtSize(dateStr, fontDateSize);
       const dateX = margins.left + (contentWidth - dateWidth);
       const dateY = contentTop - fontDateSize;
-  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
+  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontBold, color: titleColor });
 
       const titleSize = 16;
       const titleWidth = fontBold.widthOfTextAtSize(titleText, titleSize);

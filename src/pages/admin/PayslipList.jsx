@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import { buildPayslipViewModel } from "../../utils/payslipViewModel";
+import { downloadPayslipPdf } from "../../utils/payslipPdf";
 import {
   Button,
   Card,
@@ -23,7 +23,6 @@ import {
   CalendarMonth
 } from "@mui/icons-material";
 import { API_ENDPOINTS } from "../../utils/api";
-import dayjs from "dayjs";
 import Loader from "../../components/admin-dashboard/common/Loader";
 
 const PayslipList = () => {
@@ -110,8 +109,7 @@ const PayslipList = () => {
     return grouped;
   }, [filteredPayslips]);
 
-  const generatePDF = (payslip) => {
-    // PDF generation code remains the same as in your original implementation
+  const generatePDF = async (payslip) => {
     const {
       employeeDetails,
       incomes,
@@ -122,125 +120,17 @@ const PayslipList = () => {
       month,
     } = payslip;
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
+    const viewModel = buildPayslipViewModel(
+      { ...employeeDetails, employeeId: payslip.employeeId, month },
+      incomes,
+      deductions,
+      totalIncome,
+      totalDeductions,
+      netPay
+    );
 
-    // Colors
-    const primaryColor = [0, 102, 204];
-    const secondaryColor = [60, 60, 60];
-    const accentColor = [230, 240, 255];
-
-    // Company Header
-    doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...primaryColor);
-    doc.text("Urbancode Edutech Solutions Pvt Ltd", pageWidth / 2, 15, { align: "center" });
-
-    // Payslip Title
-    doc.setFontSize(12).setTextColor(...primaryColor);
-    doc.text("PAYSLIP", pageWidth / 2, 33, { align: "center" });
-
-    doc.setFontSize(10).setTextColor(...secondaryColor);
-    doc.text(`For the month of ${month}`, pageWidth / 2, 38, { align: "center" });
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth - margin, 38, { align: "right" });
-
-    doc.setDrawColor(...primaryColor).setLineWidth(0.5);
-    doc.line(margin, 43, pageWidth - margin, 43);
-
-    // Employee Info
-    const columnWidth = (pageWidth - 2 * margin) / 2 - 5;
-    const startY = 48;
-
-    doc.setFontSize(10).setTextColor(...primaryColor);
-    doc.text("EMPLOYEE INFORMATION", margin, startY);
-
-    doc.autoTable({
-      startY: startY + 2,
-      tableWidth: columnWidth,
-      body: [
-        ["Employee Name", employeeDetails?.name],
-        ["Bank Name", employeeDetails?.bankAccountName],
-        ["Account Number", employeeDetails?.bankAccountNumber],
-        ["Total STD Days", employeeDetails?.totalDays || "N/A"],
-        ["Leaves Taken", employeeDetails?.absentDays || "0"],
-      ],
-      theme: "grid",
-      styles: { fontSize: 10, cellPadding: 2, minCellHeight: 12 },
-      columnStyles: {
-        0: { fontStyle: "bold", fillColor: accentColor, cellWidth: columnWidth * 0.4 },
-        1: { cellWidth: columnWidth * 0.6 },
-      },
-      margin: { left: margin },
-    });
-    const leftTableY = doc.lastAutoTable.finalY;
-
-    doc.autoTable({
-      startY: startY + 2,
-      tableWidth: columnWidth,
-      body: [
-        ["Employee ID", payslip.employeeId],
-        ["Designation", employeeDetails?.designation],
-        ["Location", "Chennai"],
-        ["Department", employeeDetails?.department],
-        ["Date of Joining", employeeDetails?.dateOfJoining
-        ? dayjs(employeeDetails.dateOfJoining).format("DD-MMM-YYYY") 
-        : "N/A"],
-      ],
-      theme: "grid",
-      styles: { fontSize: 10, cellPadding: 2, minCellHeight: 12 },
-      columnStyles: {
-        0: { fontStyle: "bold", fillColor: accentColor, cellWidth: columnWidth * 0.4 },
-        1: { cellWidth: columnWidth * 0.6 },
-      },
-      margin: { left: margin + columnWidth + 10 },
-    });
-    const rightTableY = doc.lastAutoTable.finalY;
-
-    let earningsStartY = Math.max(leftTableY, rightTableY) + 10;
-
-    // Earnings
-    doc.setTextColor(...primaryColor);
-    doc.text("EARNINGS", margin, earningsStartY);
-    doc.autoTable({
-      startY: earningsStartY + 5,
-      head: [["Description", "Amount (Rs)"]],
-      body: [
-        ...Object.entries(incomes || {}).map(([label, amount]) => [label, amount.toFixed(2)]),
-        ["Total Earnings", totalIncome.toFixed(2)],
-      ],
-      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
-      columnStyles: { 1: { halign: "right" } },
-      margin: { left: margin, right: margin },
-    });
-    const earningsTableY = doc.lastAutoTable.finalY;
-
-    // Deductions
-    doc.setTextColor(...primaryColor);
-    doc.text("DEDUCTIONS", margin, earningsTableY + 10);
-    doc.autoTable({
-      startY: earningsTableY + 15,
-      head: [["Description", "Amount (Rs)"]],
-      body: [
-        ...Object.entries(deductions || {}).map(([label, amount]) => [label, amount.toFixed(2)]),
-        ["Total Deductions", totalDeductions.toFixed(2)],
-      ],
-      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
-      columnStyles: { 1: { halign: "right" } },
-      margin: { left: margin, right: margin },
-    });
-    const deductionsTableY = doc.lastAutoTable.finalY;
-
-    // Net Pay
-    doc.setFontSize(12).setFont("helvetica", "bold");
-    doc.text("NET PAYABLE:", pageWidth - margin - 90, deductionsTableY + 15);
-    doc.text(`Rs. ${netPay.toFixed(2)}`, pageWidth - margin - 20, deductionsTableY + 15, { align: "right" });
-
-    // Footer
-    doc.setFontSize(8).setTextColor(...secondaryColor).setFont("helvetica", "normal");
-    doc.text("This is a computer generated payslip and does not require signature.", pageWidth / 2, 285, { align: "center" });
-    doc.text("For any discrepancies, please contact Management within 7 days.", pageWidth / 2, 290, { align: "center" });
-
-    const fileName = `Payslip_${employeeDetails?.name?.replace(/\s+/g, "_")}_${month?.replace(/\s+/g, "_")}.pdf`;
-    doc.save(fileName);
+    const fileName = `Payslip_${(employeeDetails?.name || "Employee").replace(/\s+/g, "_")}_${(month || "").replace(/\s+/g, "_")}.pdf`;
+    await downloadPayslipPdf(viewModel, fileName);
   };
 
   if (loading) {

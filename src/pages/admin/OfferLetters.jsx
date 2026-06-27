@@ -25,6 +25,8 @@ import { sanitizeTextForStandardFonts } from '../../utils/pdfTextSanitizer';
 
 const SIGN_OFF_GAP = 14;
 const MIN_PAGE_BOTTOM = 88;
+const COMPANY_EMAIL = 'admin@urbancode.in';
+const COMPANY_PHONE = '+91 98787 98797';
 
 const OFFICE_ADDRESSES = {
   'Chennai - Pallikaranai': '9/29, 5th Street, Kamakoti Nagar, Pallikaranai, Chennai - 600100',
@@ -115,8 +117,6 @@ const LETTER_TEMPLATES = {
 {{addressLine1}},
 {{addressLine2}}.
 
-**Subject: Offer Letter for the Position of {{designation}}**
-
 **Dear {{name}},**
 
 We are pleased to offer you the position of **{{designation}}** at **{{company}}**. Based on your qualifications, experience, and performance during the selection process, we believe that you will be a valuable addition to our team.
@@ -137,24 +137,17 @@ If you have any questions or require further clarification, please feel free to 
   },
   Employment: {
     title: 'EMPLOYMENT OFFER LETTER',
-    body: `Date: {{date}}
-
-To,
+    body: `To,
 {{name}},
 {{addressLine1}},
 {{addressLine2}}.
 
-**Subject: Offer of Employment**
-
 **Dear {{name}},**
 
-We are pleased to extend to you an offer of employment with **{{company}}** for the position of **{{designation}}**.
-
-Based on your qualifications, skills, and experience, your Annual Cost to Company (CTC) will be **Rs. {{salary}}**. We are confident that you will be a valuable addition to our team. We are excited to welcome you to our organization and look forward to your contribution towards our continued growth and success.
+We are pleased to extend to you an offer of employment with **{{company}}** for the position of **{{designation}}**. Based on your qualifications, skills, and experience, your Annual Cost to Company (CTC) will be **Rs. {{salary}}**. We are confident that you will be a valuable addition to our team. We are excited to welcome you to our organization and look forward to your contribution towards our continued growth and success.
 
 **Employment Details**
 Designation: {{designation}}
-Department: {{department}}
 Date of Joining: {{joiningDate}}
 Employment Type: Full-Time
 Work Location: {{workLocation}}
@@ -169,7 +162,7 @@ You will be responsible for performing duties associated with your role and any 
 4. The company reserves the right to modify job responsibilities, reporting structures, and operational requirements based on business needs.
 5. Either party may terminate the employment relationship by providing notice as per company policy.
 
-We are excited to welcome you to the **{{company}}** family and look forward to your valuable contribution in shaping confident communicators and future professionals.`,
+We at **{{company}}** look forward to your valuable contribution in shaping confident communicators and future professionals.`,
   },
 };
 
@@ -278,19 +271,15 @@ const OfferLetters = () => {
     }
   };
 
-  const sanitizeBoldMarkers = (text) => {
-    let out = text.replace(/\*\*([^*]*)\*\*/g, (_, inner) => {
-      const trimmed = inner.trim();
-      if (!trimmed) return '';
-      const stripped = trimmed.replace(/[,.\s]/g, '');
-      if (!stripped || /^Dear$/i.test(stripped)) {
-        return trimmed.toLowerCase().startsWith('dear') ? 'Dear,' : '';
-      }
-      return `**${trimmed}**`;
-    });
-    out = out.replace(/\*\*/g, '');
-    return out;
-  };
+  const sanitizeBoldMarkers = (text) => text.replace(/\*\*([^*]*)\*\*/g, (_, inner) => {
+    const trimmed = inner.trim();
+    if (!trimmed) return '';
+    const stripped = trimmed.replace(/[,.\s]/g, '');
+    if (!stripped || /^Dear$/i.test(stripped)) {
+      return trimmed.toLowerCase().startsWith('dear') ? 'Dear,' : '';
+    }
+    return `**${trimmed}**`;
+  });
 
   const normalizeLetterLines = (text) =>
     text
@@ -342,23 +331,7 @@ const OfferLetters = () => {
     page.drawText('Warm Regards,', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
     y -= lineHeight + 4;
 
-    // 2. Signatory name
-    page.drawText(signatoryName, { x, y, size: fontSize, font: fontBold, color: titleColor });
-    y -= lineHeight;
-
-    // 3. Designation (Founder / Director / Branch Head)
-    page.drawText(signatoryTitle, { x, y, size: fontSize, font: fontBold, color: titleColor });
-    y -= lineHeight;
-
-    // 4. Urbancode (company)
-    if (company) {
-      page.drawText(company, { x, y, size: fontSize, font: fontBold, color: titleColor });
-      y -= lineHeight;
-    }
-
-    y -= 6;
-
-    // 5. Signature (last)
+    // 2. Signature (right after Warm Regards)
     if (signatureBytes && signatureFile) {
       try {
         const sigUint8 = new Uint8Array(signatureBytes);
@@ -380,13 +353,35 @@ const OfferLetters = () => {
           width: sigDims.width,
           height: sigDims.height,
         });
+        y -= sigDims.height + 6;
       } catch (sigErr) {
         console.error('Signature embed error', sigErr);
         page.drawText('Signature', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+        y -= lineHeight + 6;
       }
     } else {
       page.drawText('Signature', { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+      y -= lineHeight + 6;
     }
+
+    // 3. Signatory name (bold)
+    page.drawText(signatoryName, { x, y, size: fontSize, font: fontBold, color: titleColor });
+    y -= lineHeight;
+
+    // 4. Designation, company, and contact details (normal weight)
+    page.drawText(signatoryTitle, { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+    y -= lineHeight;
+
+    if (company) {
+      page.drawText(company, { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+      y -= lineHeight;
+    }
+
+    page.drawText(COMPANY_EMAIL, { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+    y -= lineHeight;
+
+    page.drawText(`Phone: ${COMPANY_PHONE}`, { x, y, size: fontSize, font: fontRegular, color: bodyColor });
+    y -= lineHeight;
   };
 
   const generatePdf = async () => {
@@ -413,10 +408,12 @@ const OfferLetters = () => {
       const margins = { top: 132, left: 40, right: 50 };
       const contentTop = height - margins.top;
       const contentWidth = width - margins.left - margins.right;
+      const dateSize = 10;
+      const dateY = contentTop - dateSize;
       const titleSize = 14;
-      const titleY = contentTop - titleSize - 8;
+      const titleY = dateY - titleSize - 10;
       const bodyStartY = titleY - 10;
-      const signOffReserve = signatureBytes ? 140 : 92;
+      const signOffReserve = signatureBytes ? 167 : 119;
       const maxBodyHeight = bodyStartY - MIN_PAGE_BOTTOM - signOffReserve - SIGN_OFF_GAP;
 
       const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
@@ -450,7 +447,11 @@ const OfferLetters = () => {
         return parts;
       };
 
-      const DEAR_LINE_GAP = 11;
+      const HEADER_LINE_GAP = 11;
+      const isHeaderLine = (line) => {
+        const trimmed = line.trim();
+        return /^\*{0,2}dear\b/i.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed);
+      };
 
       const buildLayout = (fontSize) => {
         const lineHeight = fontSize + 1.5;
@@ -465,10 +466,10 @@ const OfferLetters = () => {
         const visualLines = [];
 
         for (const rawLine of sourceLines) {
-          const isDearLine = /^dear\b/i.test(rawLine.trim());
+          const isHeader = isHeaderLine(rawLine);
 
-          if (isDearLine && visualLines.length > 0) {
-            visualLines.push({ words: [], isParagraphBreak: true, gap: DEAR_LINE_GAP });
+          if (isHeader && visualLines.length > 0) {
+            visualLines.push({ words: [], isParagraphBreak: true, gap: HEADER_LINE_GAP });
           }
 
           const segments = tokenizeLineForBold(rawLine);
@@ -503,7 +504,7 @@ const OfferLetters = () => {
             lineWidth = lineWidth + (lineWords.length > 1 ? spaceWidth : 0) + wordWidth;
           }
           pushLine();
-          visualLines.push({ words: [], isParagraphBreak: true, gap: isDearLine ? DEAR_LINE_GAP : undefined });
+          visualLines.push({ words: [], isParagraphBreak: true, gap: isHeader ? HEADER_LINE_GAP : undefined });
         }
 
         let totalHeight = 0;
@@ -524,6 +525,11 @@ const OfferLetters = () => {
       }
 
       const { visualLines, lineHeight, paragraphGap, fontSize, spaceWidth, measureWord } = layout;
+
+      const dateStr = formatJoiningDate(form.offerDate) || new Date().toLocaleDateString('en-GB');
+      const dateWidth = fontBold.widthOfTextAtSize(dateStr, dateSize);
+      const dateX = margins.left + (contentWidth - dateWidth);
+      page.drawText(dateStr, { x: dateX, y: dateY, size: dateSize, font: fontBold, color: titleColor });
 
       const title = titleText || '';
       const titleWidth = fontBold.widthOfTextAtSize(title, titleSize);

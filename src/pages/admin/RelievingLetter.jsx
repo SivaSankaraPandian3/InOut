@@ -32,17 +32,17 @@ const RelievingLetter = () => {
   const [letterDate, setLetterDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [body, setBody] = useState(`To Whom It May Concern,
 
-This is to inform that {{name}} was employed with {{company}} as {{designation}} from {{joiningDate}} to {{relievingDate}}.
+This is to inform that **{{name}}** was employed with **{{company}}** as {{designation}} from **{{joiningDate}}** to **{{relievingDate}}**.
 
-As of {{relievingDate}}, {{name}} has been formally relieved from their duties and responsibilities with {{company}}. During the period of employment, {{name}} fulfilled their assigned responsibilities and adhered to the policies and procedures of the organization.
+As of **{{relievingDate}}**, {{name}} has been formally relieved from their duties and responsibilities with **{{company}}**. During the period of employment, {{name}} fulfilled their assigned responsibilities and adhered to the policies and procedures of the organization.
 
-We confirm that there are no pending obligations between {{name}} and {{company}} as of the relieving date.
+We confirm that there are no pending obligations between {{name}} and **{{company}}** as of the relieving date.
 
 We wish {{name}} success and all the very best in their future professional endeavors.
 
 Sincerely,
 Founder
-{{company}}`);
+**{{company}}**`);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -122,10 +122,10 @@ Founder
       const fontDateSize = 12;
       let dateStr = '';
       try { dateStr = letterDate ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-GB'); } catch (e) { dateStr = new Date().toLocaleDateString('en-GB'); }
-      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
+      const dateWidth = fontBold.widthOfTextAtSize(dateStr, fontDateSize);
       const dateX = margins.left + (contentWidth - dateWidth);
       const dateY = contentTop - fontDateSize;
-  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
+  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontBold, color: titleColor });
 
       const titleSize = 16;
       const titleWidth = fontBold.widthOfTextAtSize(titleText, titleSize);

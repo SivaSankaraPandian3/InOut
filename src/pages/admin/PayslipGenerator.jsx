@@ -54,6 +54,15 @@ const PayslipGenerator = () => {
     absentDays: 0,
     totalDays: 0,
     presentDays: 0,
+    empGrade: "",
+    pan: "",
+    uan: "",
+    esiNumber: "",
+    ifsc: "",
+    ctc: "",
+    workingLocation: "Chennai",
+    mobile: "",
+    remittedOn: "",
   });
 
   const [incomes, setIncomes] = useState([
@@ -176,6 +185,8 @@ console.log("formatted  doj", sampleLog?.dateOfJoining ? dayjs(sampleLog.dateOfJ
       totalDays: allDates.length,
       bankAccountName: sampleLog?.bankDetails?.bankingName,
       bankAccountNumber: sampleLog?.bankDetails?.accountNumber,
+      ifsc: sampleLog?.bankDetails?.ifscCode || prev.ifsc,
+      mobile: sampleLog?.phone || prev.mobile,
       dateOfJoining: sampleLog?.dateOfJoining
     ? dayjs(sampleLog.dateOfJoining).format("YYYY-MM-DD")
     : "",
@@ -392,6 +403,48 @@ const theme = createTheme({
             />
           </Grid>
         </Grid>
+ <Divider sx={{ my: 2 }} />
+        {/* Statutory & Other Details */}
+        <Box mt={1} mb={2}>
+          <Typography variant="h6" gutterBottom>
+            Statutory & Other Details
+          </Typography>
+          <Grid container spacing={2}>
+            {[
+              { key: "empGrade", label: "Emp Grade" },
+              { key: "pan", label: "PAN" },
+              { key: "uan", label: "PF-UAN" },
+              { key: "esiNumber", label: "ESI Number" },
+              { key: "ifsc", label: "IFSC" },
+              { key: "ctc", label: "CTC" },
+              { key: "workingLocation", label: "Working Location" },
+              { key: "mobile", label: "Mobile" },
+            ].map(({ key, label }) => (
+              <Grid item xs={12} sm={6} md={3} key={key}>
+                <TextField
+                  fullWidth
+                  label={label}
+                  value={employeeDetails[key]}
+                  onChange={(e) =>
+                    setEmployeeDetails({ ...employeeDetails, [key]: e.target.value })
+                  }
+                />
+              </Grid>
+            ))}
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Remitted On"
+                InputLabelProps={{ shrink: true }}
+                value={employeeDetails.remittedOn}
+                onChange={(e) =>
+                  setEmployeeDetails({ ...employeeDetails, remittedOn: e.target.value })
+                }
+              />
+            </Grid>
+          </Grid>
+        </Box>
  <Divider sx={{ my: 2 }} />
         {/* Attendance Summary */}
         <Box mt={3}>

@@ -29,7 +29,7 @@ const InternshipLetter = () => {
   });
   const [titleText, setTitleText] = useState('INTERNSHIP CERTIFICATE');
   const [letterDate, setLetterDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [body, setBody] = useState(`\n\nTo Whom It May Concern,\n\nThis is to certify that {{studentName}}{{#college}}{{ , of }}{{collegeName}}{{/college}}{{#reg}}{{ (Reg. No: {{registrationNumber}}) }}{{/reg}} has successfully completed an internship at {{company}} in the role of {{designation}} for a duration of {{duration}}, from {{startDate}} to {{endDate}}.\n\nDuring the internship period, {{studentName}} was actively involved in the assigned tasks and responsibilities. The intern demonstrated a positive attitude, professional conduct, and a strong willingness to learn and adapt. They showed commitment toward understanding practical concepts and contributed responsibly to the work assigned during the training period.\n\nThroughout the internship, {{studentName}} maintained discipline, punctuality, and effective communication, and worked well under guidance and supervision. Their performance and behavior during the internship period were found to be satisfactory.\n\nThis certificate is issued upon the request of {{studentName}} and may be used for academic, professional, or personal reference purposes.\n\nWe wish {{studentName}} every success in their future academic pursuits and professional career.\n\nSincerely,\nFounder\n{{company}}`);
+  const [body, setBody] = useState(`\n\nTo Whom It May Concern,\n\nThis is to certify that **{{studentName}}**{{#college}}{{ , of }}{{collegeName}}{{/college}}{{#reg}}{{ (Reg. No: {{registrationNumber}}) }}{{/reg}} has successfully completed an internship at **{{company}}** in the role of {{designation}} for a duration of {{duration}}, from **{{startDate}}** to **{{endDate}}**.\n\nDuring the internship period, {{studentName}} was actively involved in the assigned tasks and responsibilities. The intern demonstrated a positive attitude, professional conduct, and a strong willingness to learn and adapt. They showed commitment toward understanding practical concepts and contributed responsibly to the work assigned during the training period.\n\nThroughout the internship, {{studentName}} maintained discipline, punctuality, and effective communication, and worked well under guidance and supervision. Their performance and behavior during the internship period were found to be satisfactory.\n\nThis certificate is issued upon the request of {{studentName}} and may be used for academic, professional, or personal reference purposes.\n\nWe wish {{studentName}} every success in their future academic pursuits and professional career.\n\nSincerely,\nFounder\n**{{company}}**`);
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfBytesData, setPdfBytesData] = useState(null);
@@ -94,10 +94,10 @@ const InternshipLetter = () => {
       const fontDateSize = 10;
       let dateStr = '';
       try { dateStr = letterDate ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-GB'); } catch (e) { dateStr = new Date().toLocaleDateString('en-GB'); }
-      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
+      const dateWidth = fontBold.widthOfTextAtSize(dateStr, fontDateSize);
       const dateX = margins.left + (contentWidth - dateWidth);
       const dateY = contentTop - fontDateSize;
-  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
+  page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontBold, color: titleColor });
 
       const titleSize = 16;
       const titleWidth = fontBold.widthOfTextAtSize(titleText, titleSize);

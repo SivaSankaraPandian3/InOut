@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Container, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, CircularProgress, List, ListItem, ListItemText, ListItemSecondaryAction } from '@mui/material';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import Swal from 'sweetalert2';
@@ -7,6 +7,11 @@ import { shrinkLetterheadPhoneIconOnAllPages } from '../../utils/letterheadFoote
 import { sanitizeTextForStandardFonts } from '../../utils/pdfTextSanitizer';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../../utils/api';
+
+const SIGNATORY_NAME = 'Sivagaminathan';
+const SIGNATORY_TITLE = 'Founder';
+const COMPANY_EMAIL = 'admin@urbancode.in';
+const COMPANY_PHONE = '+91 98787 98797';
 
 const InternshipOfferLetter = () => {
   const [form, setForm] = useState({
@@ -58,17 +63,13 @@ const InternshipOfferLetter = () => {
   };
 
   const defaultBody = (f) => `To,
-Name: ${f.candidateName || ''}
-Address: ${f.addressLine1 || ''}
-Location: ${f.location || ''}
-Country: ${f.country || ''}
-College Name: ${f.collegeName || ''}
+Name: **${f.candidateName || ''}**
 
 Subject: Offer of Internship - ${f.designation || 'Full Stack Web Development'}
 
-Dear ${f.candidateName || ''},
+Dear **${f.candidateName || ''}**,
 
-We are delighted to offer you an internship opportunity with ${f.company || ''} in the domain of ${f.designation || 'Full Stack Web Development'} for a duration of ${f.duration || ''} commencing from ${formatLongDate(f.joiningDate)}.
+We are delighted to offer you an internship opportunity with **${f.company || ''}** in the domain of ${f.designation || 'Full Stack Web Development'} for a duration of ${f.duration || ''} commencing from **${formatLongDate(f.joiningDate)}**.
 
 This internship has been designed to provide practical industry exposure and hands-on learning experiences that complement your academic and technical development. Throughout the internship period, you will engage in real-world projects, guided assignments, technical workshops, and skill-enhancement activities aligned with current industry standards and practices.
 
@@ -76,21 +77,37 @@ As an intern, you will be expected to demonstrate professionalism, maintain conf
 
 This internship serves as a valuable learning opportunity to strengthen your technical competencies, problem-solving abilities, and professional skills in a collaborative and innovation-driven environment.
 
-Please note that this internship is intended for educational and skill development purposes and does not constitute an offer of employment. However, candidates who consistently demonstrate outstanding performance, technical excellence, commitment, and professionalism during the internship may be considered for future employment opportunities with ${f.company || ''}, subject to organizational requirements and position availability.
+Please note that this internship is intended for educational and skill development purposes and does not constitute an offer of employment. However, candidates who consistently demonstrate outstanding performance, technical excellence, commitment, and professionalism during the internship may be considered for future employment opportunities with **${f.company || ''}**, subject to organizational requirements and position availability.
 
-We are excited to welcome you to the ${f.company || ''} learning ecosystem and look forward to supporting your professional growth and career development.
+We are excited to welcome you to the **${f.company || ''}** learning ecosystem and look forward to supporting your professional growth and career development.
 
 We wish you a rewarding, productive, and successful internship experience.
 
 Warm Regards,
-For ${f.company || ''}
-Authorized Signatory
-
-Designation:
-Contact:
-Email:`;
+For **${f.company || ''}**
+Authorized Signatory`;
 
   const [body, setBody] = useState(defaultBody(form));
+  const lastAutoBodyRef = useRef(body);
+
+  // Keep the letter body in sync with the typed-in fields, unless the admin
+  // has manually edited the body text away from the auto-generated version.
+  useEffect(() => {
+    const next = defaultBody(form);
+    const previousAutoBody = lastAutoBodyRef.current;
+    setBody(prev => (prev === previousAutoBody ? next : prev));
+    lastAutoBodyRef.current = next;
+  }, [
+    form.candidateName,
+    form.addressLine1,
+    form.location,
+    form.country,
+    form.collegeName,
+    form.designation,
+    form.company,
+    form.duration,
+    form.joiningDate
+  ]);
 
   const generatePdf = async () => {
     setGenerating(true);
@@ -102,7 +119,7 @@ Email:`;
 
       const [copiedFirst] = await pdfDoc.copyPages(srcPdf, [0]);
       pdfDoc.addPage(copiedFirst);
-      let page = pdfDoc.getPage(0);
+      const page = pdfDoc.getPage(0);
       const { width, height } = page.getSize();
 
       const margins = { top: 143, bottom: 146, left: 40, right: 10 };
@@ -121,10 +138,10 @@ Email:`;
       // date
       const fontDateSize = 10;
       const dateStr = letterDate ? new Date(letterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-GB');
-      const dateWidth = fontRegular.widthOfTextAtSize(dateStr, fontDateSize);
+      const dateWidth = fontBold.widthOfTextAtSize(dateStr, fontDateSize);
       const dateX = margins.left + (contentWidth - dateWidth);
       const dateY = contentTop - fontDateSize;
-      page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontRegular, color: bodyColor });
+      page.drawText(dateStr, { x: dateX, y: dateY, size: fontDateSize, font: fontBold, color: titleColor });
 
       // title
       const titleSize = 16;
@@ -133,84 +150,150 @@ Email:`;
       const titleY = contentTop - titleSize - 6;
       page.drawText(titleText, { x: titleX, y: titleY, size: titleSize, font: fontBold, color: titleColor });
 
-      // body drawing
-      const fontSize = 12;
-      const lineHeight = fontSize + 4;
-      let cursorY = titleY - 14;
-      const maxWidth = contentWidth;
+      // body drawing — shrink font to whatever fits so the letter never spills onto a second page
       const letterSpacing = 0.2;
-      const spaceWidth = fontRegular.widthOfTextAtSize(' ', fontSize) + letterSpacing;
-      const measureWord = (text, font) => font.widthOfTextAtSize(text, fontSize) + letterSpacing * Math.max(0, text.length - 1);
+      const maxWidth = contentWidth;
+      const bodyStartY = titleY - 14;
+      const hasSignature = !!(signatureBytes && signatureFile);
+      // reserve room for the sign-off block, which is drawn separately below the wrapped body:
+      // "Warm Regards," + signature + name + Founder + company + email + phone
+      const signOffReserve = hasSignature ? 175 : 115;
+      const maxBodyHeight = bodyStartY - margins.bottom - signOffReserve;
 
-  // allow placeholders in the body like {{studentName}} and also respect manual edits
-  const finalBody = sanitizeTextForStandardFonts(replacePlaceholders(body, form), [fontRegular, fontBold]);
-  const lines = finalBody.split('\n');
-      for (const rawLine of lines) {
-        const words = rawLine.split(/\s+/).filter(Boolean);
-        let lineWords = [];
-        let lineWidth = 0;
+      // allow placeholders in the body like {{studentName}} and also respect manual edits
+      const finalBodyFull = sanitizeTextForStandardFonts(replacePlaceholders(body, form), [fontRegular, fontBold]);
+      const stripSignOffFromBody = (text) => {
+        const lines = text.split('\n');
+        const signOffIndex = lines.findIndex((line) => /^\s*(\*\*)?warm\s+regards?,?(\*\*)?\s*$/i.test(line.trim()));
+        if (signOffIndex >= 0) return lines.slice(0, signOffIndex).join('\n').trimEnd();
+        return text;
+      };
+      const finalBody = stripSignOffFromBody(finalBodyFull);
+      const sourceLines = finalBody.split('\n');
 
-        const flushLine = async () => {
-          if (lineWords.length === 0) return;
-          if (cursorY - lineHeight < margins.bottom) {
-            const [bg] = await pdfDoc.copyPages(srcPdf, [0]); pdfDoc.addPage(bg); page = pdfDoc.getPage(pdfDoc.getPageCount() - 1); cursorY = height - margins.top - fontSize;
-          }
-          let x = margins.left;
-          for (let i = 0; i < lineWords.length; i++) {
-            const w = lineWords[i];
-            let cx = x;
-            for (let ci = 0; ci < w.length; ci++) {
-              const ch = w[ci];
-              page.drawText(ch, { x: cx, y: cursorY, size: fontSize, font: fontRegular, color: bodyColor });
-              const cw = fontRegular.widthOfTextAtSize(ch, fontSize);
-              cx += cw + letterSpacing;
-            }
-            const wWidth = measureWord(w, fontRegular);
-            x += wWidth; if (i !== lineWords.length - 1) x += spaceWidth;
-          }
-          cursorY -= lineHeight;
-          lineWords = []; lineWidth = 0;
-        };
-
-        for (let i = 0; i < words.length; i++) {
-          const w = words[i];
-          const wWidth = measureWord(w, fontRegular);
-          const extra = lineWords.length > 0 ? spaceWidth : 0;
-          if (lineWidth + extra + wWidth > maxWidth) {
-            await flushLine();
-          }
-          lineWords.push(w);
-          lineWidth = lineWidth + (lineWords.length > 1 ? spaceWidth : 0) + wWidth;
+      // **text** marks the important bits (name, dates, company) to be rendered bold
+      const tokenizeLineForBold = (line) => {
+        const parts = [];
+        const pattern = /\*\*(.+?)\*\*/g;
+        let lastIndex = 0;
+        let match;
+        while ((match = pattern.exec(line)) !== null) {
+          if (match.index > lastIndex) parts.push({ text: line.slice(lastIndex, match.index), bold: false });
+          parts.push({ text: match[1], bold: true });
+          lastIndex = match.index + match[0].length;
         }
-        await flushLine();
-        cursorY -= lineHeight / 2;
+        if (lastIndex < line.length) parts.push({ text: line.slice(lastIndex), bold: false });
+        return parts;
+      };
+
+      const buildLayout = (fontSize) => {
+        const lineHeight = fontSize + 2;
+        const paragraphGap = 4;
+        const spaceWidth = fontRegular.widthOfTextAtSize(' ', fontSize) + letterSpacing;
+        const measureWord = (text, font = fontRegular) => font.widthOfTextAtSize(text, fontSize) + letterSpacing * Math.max(0, text.length - 1);
+
+        const items = [];
+        let totalHeight = 0;
+
+        for (const rawLine of sourceLines) {
+          const words = [];
+          tokenizeLineForBold(rawLine).forEach((seg) => {
+            seg.text.split(/\s+/).filter(Boolean).forEach((w) => words.push({ text: w, bold: seg.bold }));
+          });
+          let lineWords = [];
+          let lineWidth = 0;
+
+          const pushLine = () => {
+            if (lineWords.length === 0) return;
+            items.push({ words: lineWords });
+            totalHeight += lineHeight;
+            lineWords = []; lineWidth = 0;
+          };
+
+          for (const w of words) {
+            const usedFont = w.bold ? fontBold : fontRegular;
+            const wWidth = measureWord(w.text, usedFont);
+            const extra = lineWords.length > 0 ? spaceWidth : 0;
+            if (lineWidth + extra + wWidth > maxWidth) pushLine();
+            lineWords.push(w);
+            lineWidth = lineWidth + (lineWords.length > 1 ? spaceWidth : 0) + wWidth;
+          }
+          pushLine();
+          items.push({ gap: paragraphGap });
+          totalHeight += paragraphGap;
+        }
+
+        return { items, totalHeight, lineHeight, fontSize, spaceWidth, measureWord };
+      };
+
+      let layout = buildLayout(12);
+      for (let size = 11.5; size >= 6.5 && layout.totalHeight > maxBodyHeight; size -= 0.5) {
+        layout = buildLayout(size);
       }
 
-      // signature: place where content ends (below the last drawn line)
-      if (signatureBytes && signatureFile) {
+      let cursorY = bodyStartY;
+      for (const item of layout.items) {
+        if (item.gap !== undefined) { cursorY -= item.gap; continue; }
+        let x = margins.left;
+        for (let i = 0; i < item.words.length; i++) {
+          const w = item.words[i];
+          const usedFont = w.bold ? fontBold : fontRegular;
+          const usedColor = w.bold ? titleColor : bodyColor;
+          let cx = x;
+          for (let ci = 0; ci < w.text.length; ci++) {
+            const ch = w.text[ci];
+            page.drawText(ch, { x: cx, y: cursorY, size: layout.fontSize, font: usedFont, color: usedColor });
+            const cw = usedFont.widthOfTextAtSize(ch, layout.fontSize);
+            cx += cw + letterSpacing;
+          }
+          const wWidth = layout.measureWord(w.text, usedFont);
+          x += wWidth; if (i !== item.words.length - 1) x += layout.spaceWidth;
+        }
+        cursorY -= layout.lineHeight;
+      }
+
+      // Sign-off block, drawn right after the wrapped body: Warm Regards -> Signature -> For Company -> Authorized Signatory
+      let signY = cursorY - 4;
+      page.drawText('Warm Regards,', { x: margins.left, y: signY, size: layout.fontSize, font: fontRegular, color: bodyColor });
+      signY -= layout.lineHeight + 4;
+
+      if (hasSignature) {
         try {
           const sigUint8 = new Uint8Array(signatureBytes);
           const mime = signatureFile.type || '';
           const embeddedSig = mime.includes('png') ? await pdfDoc.embedPng(sigUint8) : await pdfDoc.embedJpg(sigUint8);
-          const maxSigWidth = 150; const maxSigHeight = 80;
+          const maxSigWidth = 120; const maxSigHeight = 48;
           const origW = embeddedSig.width || 1; const origH = embeddedSig.height || 1;
           const scale = Math.min(1, maxSigWidth / origW, maxSigHeight / origH);
           const sigDims = embeddedSig.scale(scale);
 
-          let targetPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-          let targetY = cursorY - lineHeight * 1.2;
-          if (targetY < margins.bottom) {
-            const [bg] = await pdfDoc.copyPages(srcPdf, [0]);
-            pdfDoc.addPage(bg);
-            targetPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-            const { height: newH } = targetPage.getSize();
-            targetY = newH - margins.top - lineHeight * 2;
-          }
-
-          const x = margins.left;
-          targetPage.drawImage(embeddedSig, { x, y: targetY, width: sigDims.width, height: sigDims.height });
-        } catch (sigErr) { console.error('Signature embed error', sigErr); }
+          page.drawImage(embeddedSig, { x: margins.left, y: signY - sigDims.height, width: sigDims.width, height: sigDims.height });
+          signY -= sigDims.height + 6;
+        } catch (sigErr) {
+          console.error('Signature embed error', sigErr);
+          signY -= layout.lineHeight + 6;
+        }
+      } else {
+        signY -= 6;
       }
+
+      // Signatory name (bold), then designation, company, and contact details (normal weight)
+      page.drawText(SIGNATORY_NAME, { x: margins.left, y: signY, size: layout.fontSize, font: fontBold, color: titleColor });
+      signY -= layout.lineHeight;
+
+      page.drawText(SIGNATORY_TITLE, { x: margins.left, y: signY, size: layout.fontSize, font: fontRegular, color: bodyColor });
+      signY -= layout.lineHeight;
+
+      const companyName = form.company?.trim() || '';
+      if (companyName) {
+        page.drawText(companyName, { x: margins.left, y: signY, size: layout.fontSize, font: fontRegular, color: bodyColor });
+        signY -= layout.lineHeight;
+      }
+
+      page.drawText(COMPANY_EMAIL, { x: margins.left, y: signY, size: layout.fontSize, font: fontRegular, color: bodyColor });
+      signY -= layout.lineHeight;
+
+      page.drawText(`Phone: ${COMPANY_PHONE}`, { x: margins.left, y: signY, size: layout.fontSize, font: fontRegular, color: bodyColor });
 
   await shrinkLetterheadPhoneIconOnAllPages(pdfDoc);
   const pdfBytes = await pdfDoc.save();
@@ -259,7 +342,9 @@ Email:`;
       };
       setForm(next);
       // populate the editable body with template filled for this candidate
-      setBody(defaultBody(next));
+      const autoBody = defaultBody(next);
+      setBody(autoBody);
+      lastAutoBodyRef.current = autoBody;
     }
   }, [selected, candidates]);
 
