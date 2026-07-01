@@ -52,11 +52,19 @@ const AllUsers = () => {
     }
   };
 
-  // On every navigation to this page, silently refresh in the background.
-  // If we already have cached data the table stays visible (no shake).
+  // Initial load (or re-mount with empty cache).
   useEffect(() => {
     fetchUsers();
-  }, [location.key, location.state?.userListRefresh]);
+  }, []);
+
+  // Explicit refresh only when navigating back after an edit/add action.
+  useEffect(() => {
+    if (location.state?.userListRefresh) {
+      _cachedUsers = null;
+      setLoading(false);
+      fetchUsers();
+    }
+  }, [location.state?.userListRefresh]);
 
   const closeActionMenu = () => {
     setOpenMenuId(null);
