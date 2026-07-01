@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -27,6 +27,7 @@ const AllUsers = () => {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const hasFetched = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
   const [filterPosition, setFilterPosition] = useState('All');
@@ -50,7 +51,10 @@ const AllUsers = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
+    if (!hasFetched.current) {
+      setLoading(true);
+      hasFetched.current = true;
+    }
     fetchUsers();
   }, [location.key, location.state?.userListRefresh]);
 
