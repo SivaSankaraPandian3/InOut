@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -17,9 +17,12 @@ import {
   branchBadgeClass,
 } from '../../utils/branches';
 
+// module-level cache — survives component unmount/remount during navigation
+let _cachedUsers = null;
+
 const AllUsers = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState(_cachedUsers || []);
+  const [loading, setLoading] = useState(!_cachedUsers);
   const [updating, setUpdating] = useState(false);
   const [showPastModal, setShowPastModal] = useState(false);
   const [pastSearch, setPastSearch] = useState('');
@@ -27,7 +30,6 @@ const AllUsers = () => {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const hasFetched = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
   const [filterPosition, setFilterPosition] = useState('All');
@@ -35,14 +37,14 @@ const AllUsers = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterBranch, setFilterBranch] = useState('All');
 
-  // ✅ Move fetchUsers outside useEffect so you can use it in onUpdated
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(API_ENDPOINTS.getUsers, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUsers(res.data || []);
+      _cachedUsers = res.data || [];
+      setUsers(_cachedUsers);
     } catch (error) {
       console.error('Failed to fetch users:', error);
     } finally {
@@ -50,11 +52,9 @@ const AllUsers = () => {
     }
   };
 
+  // On every navigation to this page, silently refresh in the background.
+  // If we already have cached data the table stays visible (no shake).
   useEffect(() => {
-    if (!hasFetched.current) {
-      setLoading(true);
-      hasFetched.current = true;
-    }
     fetchUsers();
   }, [location.key, location.state?.userListRefresh]);
 
