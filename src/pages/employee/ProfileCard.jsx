@@ -66,7 +66,6 @@ export default function ProfileCard() {
           department: data.department || "",
           qualification: data.qualification || "",
           dateOfJoining: data.dateOfJoining || "",
-            dateOfBirth: data.dateOfBirth || "",
           dateOfBirth: data.dateOfBirth || "",
           linkedin: data.linkedin || "",
           github: data.github || "",
@@ -157,8 +156,9 @@ export default function ProfileCard() {
       await axios.put(API_ENDPOINTS.updateProfile, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
-  setIsEditingAll(false);
-  setOriginalProfile(payload);
+      setProfile(payload);
+      setOriginalProfile(payload);
+      setIsEditingAll(false);
       // Small success feedback
       try {
         Swal.fire({ icon: 'success', title: 'Profile updated', text: 'Your profile was updated successfully', timer: 1500, showConfirmButton: false });
@@ -681,7 +681,7 @@ export default function ProfileCard() {
                     className="edit-input"
                   />
                 ) : (
-                  <span>${Number(profile.salary).toLocaleString()}/year</span>
+                  <span>₹{Number(profile.salary).toLocaleString()}/year</span>
                 )}
               </div>
               <div className="info-row">
